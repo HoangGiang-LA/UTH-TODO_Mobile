@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.UTHTODO" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowBackground">@color/uth_background</item>
+    </style>
+
+    <style name="Theme.UTHTODO.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/uth_blue</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_uth_splash</item>
+        <item name="postSplashScreenTheme">@style/Theme.UTHTODO</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

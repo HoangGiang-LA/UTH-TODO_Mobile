@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">UTH Todo</string>
+    <string name="splash_tagline">Việc học, việc nhà –\ngọn gàng mỗi ngày.</string>
+    <string name="app_version">Phiên bản %1$s</string>
+    <string name="skip">Bỏ qua</string>
+    <string name="continue_action">Tiếp tục</string>
+    <string name="get_started">Bắt đầu ngay</string>
+    <string name="onboarding_title_tasks">Mọi việc, gọn trong một chỗ</string>
+    <string name="onboarding_body_tasks">Ghi lại bài tập, việc nhà, lịch hẹn. Không còn quên việc nào.</string>
+    <string name="onboarding_title_categories">Chia theo Học tập và Cuộc sống</string>
+    <string name="onboarding_body_categories">Mỗi việc có nhóm riêng, nhìn là biết hôm nay cần lo gì.</string>
+    <string name="onboarding_title_reminders">Nhắc đúng lúc</string>
+    <string name="onboarding_body_reminders">Bật thông báo để UTH Todo nhắc bạn trước hạn chót.</string>
+    <string name="page_indicator">Trang %1$d trên %2$d</string>
+    <string name="category_study">Học tập</string>
+    <string name="category_life">Cuộc sống</string>
+    <string name="sample_homework">Làm bài tập</string>
+    <string name="sample_housework">Dọn phòng</string>
+    <string name="sample_appointment">Lịch hẹn</string>
+    <string name="sample_reminder_title">Ôn bài Toán</string>
+    <string name="sample_reminder_time">Hôm nay, 19:00</string>
+    <string name="welcome_title">Chào mừng đến với UTH Todo</string>
+    <string name="welcome_body">Đăng nhập để lưu và đồng bộ công việc của bạn, mọi lúc, mọi nơi.</string>
+    <string name="continue_google">Tiếp tục với Google</string>
+    <string name="try_without_account">Dùng thử không cần tài khoản</string>
+    <string name="google_coming_soon">Đăng nhập Google sẽ được kết nối ở BTVN 02.</string>
+    <string name="guest_coming_soon">Chế độ dùng thử sẽ được kết nối ở BTVN 02.</string>
+    <string name="preferences_read_error">Chưa đọc được trạng thái đã lưu. Bạn vẫn có thể tiếp tục phần giới thiệu.</string>
+    <string name="preferences_save_error">Chưa lưu được trạng thái. Vui lòng thử lại.</string>
+    <string name="retry">Thử lại</string>
+    <string name="saving">Đang lưu…</string>
+</resources>
