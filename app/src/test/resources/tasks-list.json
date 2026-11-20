@@ -1,0 +1,8 @@
+[
+  {"id":4,"title":"Tập thể dục 30 phút","note":"","category":"life","date":"2026-10-20","time":"06:30","priority":"medium","remind":true,"done":true,"subtasks":[]},
+  {"id":1,"title":"Nộp bài tập Lập trình di động","note":"Nộp bài đúng hạn","category":"study","date":"2026-10-20","time":"09:00","priority":"high","remind":true,"done":true,"subtasks":[{"title":"Kiểm tra bài","done":true},{"title":"Nộp file","done":false}]},
+  {"id":2,"title":"Ôn chương 3 – Cấu trúc dữ liệu","note":"Ôn phần cây","category":"study","date":"2026-10-20","time":"14:00","priority":"medium","remind":false,"done":false,"subtasks":[]},
+  {"id":3,"title":"Đi chợ mua đồ cho tuần","note":"","category":"life","date":"2026-10-20","time":"17:30","priority":"low","remind":false,"done":false,"subtasks":[]},
+  {"id":5,"title":"Gọi điện về nhà","category":"life","date":"2026-10-21","time":"21:00","done":false},
+  {"id":6,"title":"Hoàn thành báo cáo","category":"study","date":"2026-10-25","time":"20:00","done":false}
+]

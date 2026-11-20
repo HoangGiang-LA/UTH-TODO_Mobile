@@ -13,10 +13,12 @@ import com.example.uth_todo.data.auth.FirebaseAuthRepository
 import com.example.uth_todo.data.firebase.FirebaseHomeConfigRepository
 import com.example.uth_todo.data.firebase.FirebaseProfileRepository
 import com.example.uth_todo.data.firebase.FirebaseTelemetry
+import com.example.uth_todo.data.tasks.MockTaskRepository
 import com.example.uth_todo.ui.auth.AuthViewModel
 import com.example.uth_todo.navigation.UthTodoApp
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
+import com.example.uth_todo.ui.home.HomeViewModel
 import com.example.uth_todo.ui.theme.UTHTODOTheme
 
 class MainActivity : ComponentActivity() {
@@ -27,6 +29,7 @@ class MainActivity : ComponentActivity() {
         val appFactory = viewModelFactory {
             initializer { OnboardingViewModel(OnboardingPreferences(applicationContext)) }
             initializer { AuthViewModel(FirebaseAuthRepository(applicationContext)) }
+            initializer { HomeViewModel(MockTaskRepository(BuildConfig.MOCK_API_TOKEN)) }
             initializer {
                 val telemetry = FirebaseTelemetry(applicationContext)
                 FirebaseServicesViewModel(FirebaseProfileRepository(applicationContext),
@@ -38,7 +41,9 @@ class MainActivity : ComponentActivity() {
                 val onboardingViewModel: OnboardingViewModel = viewModel(factory = appFactory)
                 val authViewModel: AuthViewModel = viewModel(factory = appFactory)
                 val servicesViewModel: FirebaseServicesViewModel = viewModel(factory = appFactory)
-                UthTodoApp(onboardingViewModel, authViewModel = authViewModel, servicesViewModel = servicesViewModel)
+                val homeViewModel: HomeViewModel = viewModel(factory = appFactory)
+                UthTodoApp(onboardingViewModel, authViewModel = authViewModel,
+                    servicesViewModel = servicesViewModel, homeViewModel = homeViewModel)
             }
         }
     }

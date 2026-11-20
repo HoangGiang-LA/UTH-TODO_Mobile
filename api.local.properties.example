@@ -1,0 +1,3 @@
+# Copy to api.local.properties and use the mock API token from the assignment.
+# Do not use a Firebase ID token or a service-account key here.
+MOCK_API_TOKEN=

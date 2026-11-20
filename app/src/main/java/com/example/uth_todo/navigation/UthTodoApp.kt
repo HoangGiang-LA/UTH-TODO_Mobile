@@ -36,6 +36,9 @@ import com.example.uth_todo.ui.auth.AuthViewModel
 import com.example.uth_todo.ui.auth.EmailAuthScreen
 import com.example.uth_todo.ui.auth.messageResource
 import com.example.uth_todo.ui.home.HomeScreen
+import com.example.uth_todo.ui.home.HomeViewModel
+import com.example.uth_todo.ui.home.HomeUiState
+import com.example.uth_todo.ui.home.messageResource
 import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -50,10 +53,12 @@ fun UthTodoApp(
     authViewModel: AuthViewModel,
     navController: NavHostController = rememberNavController(),
     servicesViewModel: FirebaseServicesViewModel? = null,
+    homeViewModel: HomeViewModel? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val servicesState = servicesViewModel?.uiState?.collectAsStateWithLifecycle()?.value
+    val homeState = homeViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val snackbar = remember { SnackbarHostState() }
@@ -65,10 +70,19 @@ fun UthTodoApp(
     val retryLabel = stringResource(R.string.retry)
     val authNotice = authState.notice
     val authNoticeMessage = authNotice?.let { stringResource(it.messageResource()) }
+    val taskNotice = homeState?.notice
+    val taskNoticeMessage = taskNotice?.let { stringResource(it.messageResource()) }
     val splashVisible = route == null || route == AppDestination.Splash.route
 
     LaunchedEffect(authState.session, servicesViewModel) {
         servicesViewModel?.bindSession(authState.session)
+    }
+    LaunchedEffect(authState.session, homeViewModel) { homeViewModel?.bindSession(authState.session) }
+    LaunchedEffect(taskNotice, taskNoticeMessage) {
+        val notice = taskNotice ?: return@LaunchedEffect
+        val message = taskNoticeMessage ?: return@LaunchedEffect
+        snackbar.showSnackbar(message, withDismissAction = true)
+        homeViewModel?.dismissNotice(notice)
     }
     LaunchedEffect(route, servicesViewModel) {
         route?.let { servicesViewModel?.screenOpened(it) }
@@ -163,11 +177,16 @@ fun UthTodoApp(
                 )
             }
             composable(AppDestination.Home.route) {
+                LaunchedEffect(homeViewModel) { homeViewModel?.onHomeOpened() }
                 val uid = (authState.session as? AuthSession.SignedIn)?.user?.uid
                 HomeScreen(authState.session,
                     onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
                     displayName = servicesState?.takeIf { uid != null && it.uid == uid }?.displayName,
-                    announcement = servicesState?.homeConfig?.announcement)
+                    announcement = servicesState?.homeConfig?.announcement,
+                    state = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
+                    onRefresh = { homeViewModel?.refresh() },
+                    onToggle = { homeViewModel?.toggleDone(it) },
+                    onSelectDate = { homeViewModel?.selectDate(it) })
             }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(authState.session, authState.isBusy,
