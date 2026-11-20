@@ -27,7 +27,17 @@ import com.example.uth_todo.ui.components.BrandLogo
 import com.example.uth_todo.ui.components.PrimaryButton
 
 @Composable
-fun ProfileScreen(session: AuthSession, isBusy: Boolean, onBack: () -> Unit, onSignOut: () -> Unit) {
+fun ProfileScreen(
+    session: AuthSession,
+    isBusy: Boolean,
+    onBack: () -> Unit,
+    onSignOut: () -> Unit,
+    servicesState: FirebaseServicesState? = null,
+    onSaveName: (String) -> Unit = {},
+    onRetryProfile: () -> Unit = {},
+    onNameEdited: () -> Unit = {},
+    showNotifications: Boolean = false,
+) {
     val user = (session as? AuthSession.SignedIn)?.user
     val missing = stringResource(R.string.profile_not_provided)
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
@@ -44,7 +54,9 @@ fun ProfileScreen(session: AuthSession, isBusy: Boolean, onBack: () -> Unit, onS
                 Card(Modifier.fillMaxWidth()) {
                     SelectionContainer {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
-                            ProfileField(stringResource(R.string.profile_name), user.displayName?.takeIf { it.isNotBlank() } ?: missing)
+                            ProfileField(stringResource(R.string.profile_name),
+                                servicesState?.displayName?.takeIf { it.isNotBlank() }
+                                    ?: user.displayName?.takeIf { it.isNotBlank() } ?: missing)
                             ProfileField(stringResource(R.string.profile_email), user.email ?: missing)
                             ProfileField(stringResource(R.string.profile_uid), user.uid)
                             ProfileField(stringResource(R.string.profile_verification), stringResource(
@@ -52,7 +64,11 @@ fun ProfileScreen(session: AuthSession, isBusy: Boolean, onBack: () -> Unit, onS
                         }
                     }
                 }
+                if (servicesState != null) {
+                    CloudProfileEditor(servicesState, user.displayName.orEmpty(), onSaveName, onRetryProfile, onNameEdited)
+                }
             }
+            if (showNotifications) NotificationPreferenceCard()
             PrimaryButton(
                 stringResource(if (isBusy) R.string.auth_processing else if (session == AuthSession.Guest) R.string.auth_sign_in else R.string.profile_sign_out),
                 onSignOut, enabled = !isBusy, tag = "sign_out_button",

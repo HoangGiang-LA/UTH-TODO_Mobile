@@ -7,6 +7,7 @@ plugins {
 // Adding the real module config and syncing enables Google Services resources.
 if (file("google-services.json").isFile) {
     apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 android {
@@ -58,6 +59,11 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    implementation(libs.firebase.database)
+    implementation(libs.firebase.messaging)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.config)
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.identity)

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<defaultsMap>
+    <entry>
+        <key>home_announcement_enabled</key>
+        <value>false</value>
+    </entry>
+    <entry>
+        <key>home_announcement_text</key>
+        <value>Chúc bạn một ngày học tập hiệu quả!</value>
+    </entry>
+</defaultsMap>
