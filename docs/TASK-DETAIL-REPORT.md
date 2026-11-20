@@ -2,6 +2,8 @@
 
 Ngày: 20/11/2026. Base: Danh sách commit `4d0d14e`, người dùng đã test/push. Nhánh dự kiến: `feature/task-detail-api`.
 
+**Nghiệm thu sau triển khai:** người dùng xác nhận đã test và push thành công; commit `b27f9d3` trên `feature/task-detail-api`. Nội dung bên dưới lưu kết quả tại mốc Chi tiết. Mốc Thêm công việc tiếp theo được ghi trong [TASK-CREATE-REPORT.md](TASK-CREATE-REPORT.md).
+
 ## Phạm vi đã triển khai
 
 Đối chiếu ảnh “Dựng Flow Chi tiết (UI + API)” trong `Khởi tạo App Mobile(Task).docx`: tên, nhóm/ưu tiên, hạn chót, nhắc nhở, ghi chú, tiến độ việc nhỏ, nút Sửa, hoàn thành và xóa.

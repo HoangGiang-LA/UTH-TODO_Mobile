@@ -135,7 +135,6 @@
     <string name="task_subtask_done">✓ %1$s</string>
     <string name="task_subtask_pending">○ %1$s</string>
     <string name="task_add">Thêm công việc</string>
-    <string name="task_add_unavailable">Chức năng tạo công việc hiện chưa sẵn sàng.</string>
     <string name="settings_title">Cài đặt</string>
     <string name="close_action">Đóng</string>
     <string name="select_action">Chọn</string>
@@ -186,4 +185,11 @@
     <string name="task_error_time">Giờ không hợp lệ. Dùng định dạng HH:mm.</string>
     <string name="task_error_priority">Vui lòng chọn mức ưu tiên.</string>
     <string name="task_error_subtask">Vui lòng nhập tên hoặc bỏ việc nhỏ đang để trống.</string>
+    <string name="task_create_submit">Tạo công việc</string>
+    <string name="task_created_message">Đã tạo “%1$s”. Công việc hiển thị theo ngày, nhóm và tìm kiếm đang chọn.</string>
+    <string name="task_create_uncertain">Chưa xác nhận được kết quả tạo. Hãy kiểm tra danh sách trước khi gửi lại để tránh tạo trùng.</string>
+    <string name="task_create_review">Kiểm tra danh sách</string>
+    <string name="task_create_retry">Đã kiểm tra, cho phép gửi lại</string>
+    <string name="task_create_retry_body">Nếu công việc đã được tạo, gửi lại có thể tạo thêm một bản. Tiếp tục cho phép gửi lại?</string>
+    <string name="task_create_mismatch">Dịch vụ trả về công việc khác với nội dung bạn vừa nhập. Chưa thể xác nhận tạo thành công; nội dung của bạn vẫn được giữ lại.</string>
 </resources>

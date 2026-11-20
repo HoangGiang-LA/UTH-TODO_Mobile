@@ -2,6 +2,7 @@ package com.example.uth_todo.data.tasks
 
 import com.example.uth_todo.model.TodoTask
 import com.example.uth_todo.model.TodoSubtask
+import com.example.uth_todo.model.TaskDraft
 
 interface TaskRepository {
     val isConfigured: Boolean
@@ -11,4 +12,5 @@ interface TaskRepository {
     suspend fun updateTask(task: TodoTask)
     suspend fun setSubtasks(id: Long, subtasks: List<TodoSubtask>)
     suspend fun deleteTask(id: Long)
+    suspend fun createTask(draft: TaskDraft): TodoTask
 }

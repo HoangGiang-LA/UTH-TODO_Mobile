@@ -6,6 +6,8 @@ import com.example.uth_todo.model.TodoTask
 import com.example.uth_todo.model.TodoSubtask
 import com.example.uth_todo.model.TaskCategory
 import com.example.uth_todo.model.TaskPriority
+import com.example.uth_todo.model.TaskDraft
+import com.example.uth_todo.model.TaskCreateFailure
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -29,6 +31,7 @@ fun interface TaskHttpClient { suspend fun execute(request: Request): TaskHttpRe
 
 class OkHttpTaskClient : TaskHttpClient {
     private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
+        .retryOnConnectionFailure(false)
         .connectTimeout(10, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS).callTimeout(20, TimeUnit.SECONDS).build()
 
@@ -105,6 +108,26 @@ class MockTaskRepository(
     override suspend fun deleteTask(id: Long) {
         require(id > 0)
         execute(request("https://share.tryapps.store/mock/teach/tasks/$id").delete().build())
+    }
+
+    override suspend fun createTask(draft: TaskDraft): TodoTask {
+        require(draft.validationError() == null)
+        // IDs are assigned by the server. Never fabricate one from the local list.
+        val fields = mapOf("title" to draft.title.trim(), "category" to draft.category.name.lowercase(),
+            "date" to draft.date.trim().ifBlank { null }, "time" to draft.time.trim().ifBlank { null },
+            "note" to draft.note.trim(), "priority" to draft.priority.name.lowercase(), "remind" to draft.remind,
+            "done" to false, "subtasks" to draft.subtasks.map { it.copy(title = it.title.trim()) })
+        val request = request("https://share.tryapps.store/mock/teach/tasks")
+            .post(com.google.gson.GsonBuilder().serializeNulls().create().toJson(fields)
+                .toRequestBody("application/json; charset=utf-8".toMediaType())).build()
+        val response = try {
+            execute(request)
+        } catch (failure: TaskApiFailure) {
+            throw TaskCreateFailure(failure.reason, failure.reason in setOf(TaskApiError.NETWORK,
+                TaskApiError.TIMEOUT, TaskApiError.SERVER, TaskApiError.INVALID_RESPONSE))
+        }
+        return try { decoder.decodeCreated(response.body, draft) }
+        catch (failure: TaskApiFailure) { throw TaskCreateFailure(failure.reason, mayHaveCreated = true) }
     }
 
     private suspend fun patch(id: Long, fields: Map<String, Any?>) {

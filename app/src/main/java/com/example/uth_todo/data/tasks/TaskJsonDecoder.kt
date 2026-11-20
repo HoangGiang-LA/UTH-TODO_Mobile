@@ -6,6 +6,7 @@ import com.example.uth_todo.model.TaskCategory
 import com.example.uth_todo.model.TaskPriority
 import com.example.uth_todo.model.TodoSubtask
 import com.example.uth_todo.model.TodoTask
+import com.example.uth_todo.model.TaskDraft
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -32,6 +33,28 @@ class TaskJsonDecoder {
             val root = gson.fromJson(json, JsonElement::class.java)
             require(root != null && root.isJsonObject)
             return decodeTask(root.asJsonObject)
+        } catch (_: Exception) {
+            throw TaskApiFailure(TaskApiError.INVALID_RESPONSE)
+        }
+    }
+
+    fun decodeCreated(json: String, draft: TaskDraft): TodoTask {
+        try {
+            val root = gson.fromJson(json, JsonElement::class.java)
+            require(root != null && root.isJsonObject)
+            val value = root.asJsonObject
+            if (value.keySet() != setOf("id")) {
+                val task = decodeTask(value)
+                if (!draft.matchesCreatedTask(task)) throw TaskApiFailure(TaskApiError.CREATE_MISMATCH)
+                return task
+            }
+            val idValue = value.get("id")
+            require(idValue.isJsonPrimitive && idValue.asJsonPrimitive.isNumber)
+            val id = idValue.asString.takeIf { it.matches(Regex("[0-9]+")) }?.toLongOrNull()
+            require(id != null && id > 0)
+            return draft.created(id)
+        } catch (known: TaskApiFailure) {
+            throw known
         } catch (_: Exception) {
             throw TaskApiFailure(TaskApiError.INVALID_RESPONSE)
         }

@@ -47,6 +47,9 @@ import com.example.uth_todo.ui.tasklist.TaskListScreen
 import com.example.uth_todo.ui.tasklist.TaskListViewModel
 import com.example.uth_todo.ui.taskdetail.TaskDetailScreen
 import com.example.uth_todo.ui.taskdetail.TaskDetailUiState
+import com.example.uth_todo.ui.taskcreate.TaskCreateScreen
+import com.example.uth_todo.ui.taskcreate.TaskCreateUiState
+import com.example.uth_todo.data.tasks.TaskDates
 import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -81,6 +84,16 @@ fun UthTodoApp(
     val taskNotice = homeState?.notice
     val taskNoticeMessage = taskNotice?.let { stringResource(it.messageResource()) }
     val splashVisible = route == null || route == AppDestination.Splash.route
+    val createdNotice = homeState?.createdNotice
+    val createdMessage = createdNotice?.let { stringResource(R.string.task_created_message, it.title) }
+
+    LaunchedEffect(createdNotice?.id, createdMessage) {
+        val task = createdNotice ?: return@LaunchedEffect
+        val message = createdMessage ?: return@LaunchedEffect
+        snackbar.currentSnackbarData?.dismiss()
+        snackbar.showSnackbar(message, withDismissAction = true)
+        homeViewModel?.dismissCreatedNotice(task.id)
+    }
 
     LaunchedEffect(authState.session, servicesViewModel) {
         servicesViewModel?.bindSession(authState.session)
@@ -203,7 +216,13 @@ fun UthTodoApp(
                     state = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
                     onRefresh = { homeViewModel?.refresh() },
                     onToggle = { homeViewModel?.toggleDone(it) },
-                    onSelectDate = { homeViewModel?.selectDate(it) })
+                    onSelectDate = { homeViewModel?.selectDate(it) },
+                    onCreateTask = {
+                        if (navController.currentDestination?.route == AppDestination.Home.route && homeState?.changingTaskId == null)
+                            navController.navigate(AppDestination.TaskCreate.location(TaskFilter.ALL, homeState?.selectedDate ?: TaskDates.today())) {
+                                launchSingleTop = true
+                            }
+                    })
             }
             composable(AppDestination.TaskList.route, arguments = listOf(
                 navArgument(AppDestination.TaskList.CATEGORY_ARGUMENT) {
@@ -237,7 +256,48 @@ fun UthTodoApp(
                         }
                     },
                     onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
+                    onCreateTask = {
+                        if (navController.currentDestination?.route == AppDestination.TaskList.route && homeState?.changingTaskId == null) {
+                            if (navController.previousBackStackEntry?.destination?.route == AppDestination.TaskCreate.route) {
+                                navController.popBackStack()
+                            } else {
+                                navController.navigate(AppDestination.TaskCreate.location(listState.filter, TaskDates.today())) {
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+                    },
                 )
+            }
+            composable(AppDestination.TaskCreate.route, arguments = listOf(
+                navArgument(AppDestination.TaskCreate.CATEGORY_ARGUMENT) { type = NavType.StringType; defaultValue = TaskFilter.ALL.name },
+                navArgument(AppDestination.TaskCreate.DATE_ARGUMENT) { type = NavType.StringType; defaultValue = "" },
+            )) { createEntry ->
+                val filter = TaskFilter.entries.firstOrNull { it.name == createEntry.arguments?.getString(AppDestination.TaskCreate.CATEGORY_ARGUMENT) }
+                    ?: TaskFilter.ALL
+                val date = createEntry.arguments?.getString(AppDestination.TaskCreate.DATE_ARGUMENT).orEmpty()
+                val creation = homeState?.creation?.takeIf { it.entryKey == createEntry.id }
+                    ?: TaskCreateUiState(error = if (homeViewModel == null) com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED else null)
+                val goBack: () -> Unit = {
+                    homeViewModel?.closeTaskCreation(createEntry.id)
+                    if (!navController.popBackStack()) navController.navigate(AppDestination.Home.route) {
+                        popUpTo(navController.graph.id) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
+                LaunchedEffect(createEntry.id, authState.session) { homeViewModel?.beginTaskCreation(createEntry.id, filter, date) }
+                LaunchedEffect(creation.created?.id, creation.isSaving) {
+                    if (creation.created != null && !creation.isSaving) goBack()
+                }
+                TaskCreateScreen(creation, onBack = goBack,
+                    onDraft = { homeViewModel?.changeCreationDraft(it) }, onCreate = { homeViewModel?.createTask() },
+                    onAllowRetry = { homeViewModel?.allowCreationRetry() },
+                    onReviewList = {
+                        if (navController.currentDestination?.route == AppDestination.TaskCreate.route) {
+                            homeViewModel?.refresh()
+                            navController.navigate(AppDestination.TaskList.location(TaskFilter.ALL)) { launchSingleTop = true }
+                        }
+                    })
             }
             composable(AppDestination.TaskDetail.route, arguments = listOf(
                 navArgument(AppDestination.TaskDetail.ID_ARGUMENT) { type = NavType.LongType },

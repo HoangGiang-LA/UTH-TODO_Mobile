@@ -1,6 +1,6 @@
 # Lộ trình nhánh UTH Todo
 
-Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng. Người dùng thực hiện mọi thao tác Git làm thay đổi trạng thái.
+Cập nhật 20/11/2026. Người dùng thực hiện mọi thao tác Git làm thay đổi trạng thái; mỗi mốc có kiểm tra và commit riêng.
 
 | Mốc | Nhánh | Trạng thái |
 |---|---|---|
@@ -8,50 +8,47 @@ Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng. Ng
 | BTVN 02 | `feature/btvn02-firebase-auth` | Commit `4f3002e`, người dùng xác nhận chạy được |
 | BTVN 03 | `feature/btvn03-firebase-services` | Commit `028f378`, người dùng đã build/tự kiểm thử thành công |
 | BTVN 04 | `feature/btvn04-home-api` | Commit `1fbfbf0`, người dùng đã build/chạy thử thành công |
-| Flow danh sách | `feature/task-list-api` | Commit `4d0d14e`, người dùng xác nhận đã test và push hoàn tất |
-| Flow chi tiết | `feature/task-detail-api` dự kiến | Đã triển khai GET theo ID, sửa, việc nhỏ, hoàn thành và xóa; chờ build/chạy thử thiết bị |
-| Thêm công việc | Chưa tạo | Mốc tiếp theo; cần đối chiếu POST và màn hình theo đề |
+| Flow danh sách | `feature/task-list-api` | Commit `4d0d14e`, đã test/push theo xác nhận người dùng |
+| Flow chi tiết | `feature/task-detail-api` | Commit `b27f9d3`, đã test/push theo xác nhận người dùng |
+| Thêm công việc | `feature/task-create-api` | Chưa đạt nghiệm thu: tạo “Lau nha” nhận task khác; đã sửa đối chiếu response, còn cần xác minh POST lưu thật |
+| Thông báo/Cài đặt | Chưa tạo | Tiếp tục hoàn thiện nhắc theo giờ và đối chiếu các màn hình còn lại |
 | BTVN 05 | Chưa đặt | Đề chưa đủ mô tả, không tự gán tính năng |
 
-## Nhánh hiện tại
+## Nhánh hiện tại và build
 
-Base là Danh sách ở `4d0d14e`. Khi triển khai Chi tiết, nhánh vẫn là `feature/task-list-api`; thay đổi mới chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
+Base là Chi tiết `b27f9d3`. Mã tạo mới hiện nằm trong working tree trên `feature/task-create-api`, chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
 
-Người dùng tự chạy:
+Nhánh tạo mới đã được người dùng tạo. Chạy tại gốc dự án:
 
 ```powershell
 git status
-git switch -c feature/task-detail-api
+git branch --show-current
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
-Nhánh mới kế thừa Danh sách đã nghiệm thu và mang theo thay đổi working tree. Không tạo lại nếu đã tạo nhánh này sau khi tài liệu được viết.
+Run rồi kiểm tra theo [TASK-CREATE-REPORT.md](TASK-CREATE-REPORT.md). Token/config đang dùng được giữ nguyên. Máy khác tạo `api.local.properties` từ template hoặc dùng `UTH_MOCK_API_TOKEN`.
 
-## Nghiệm thu Chi tiết
+Trong môi trường agent: 92 JUnit test riêng đạt, 54 source Kotlin/Compose và mã 32 Android test biên dịch đạt, resources đạt. Wrapper bị chặn mở file khóa; APK/lint, Android test trên thiết bị và live POST chưa được xác nhận.
 
-Xem [TASK-DETAIL-REPORT.md](TASK-DETAIL-REPORT.md). Run rồi thử mở từ Home/Danh sách, sửa/lưu, thêm/sửa/bỏ việc nhỏ, hoàn thành, xác nhận xóa, Back giữ từ khóa/bộ lọc, tải lỗi và phiên không còn hợp lệ.
-
-Token/config cục bộ đang hoạt động được giữ nguyên. Máy khác tạo `api.local.properties` từ template hoặc dùng biến `UTH_MOCK_API_TOKEN`.
-
-Trong môi trường agent: 74 JUnit test riêng đạt, 50 source Kotlin/Compose và mã 23 Android test biên dịch đạt, resources đạt. Wrapper bị chặn mở file khóa, chưa xác nhận APK/lint. Android test và live API chưa chạy; cần kiểm tra payload PATCH/DELETE với mock thật.
+POST hiện dùng đường dẫn collection/schema công việc đang có. Prototype bị DNS nên chưa xác minh được hợp đồng POST trực tiếp; cần kiểm tra response thực, không coi fixture/test là live API.
 
 ## Stage, commit và push sau khi chạy đạt
 
 ```powershell
 git branch --show-current
-git add README.md docs/BRANCH-ROADMAP.md docs/TASK-LIST-REPORT.md docs/TASK-DETAIL-REPORT.md
+git add README.md docs/BRANCH-ROADMAP.md docs/TASK-DETAIL-REPORT.md docs/TASK-CREATE-REPORT.md
 git add app/src/main app/src/androidTest
-git add app/src/test/java/com/example/uth_todo/HomeViewModelTest.kt app/src/test/java/com/example/uth_todo/TaskDetailTest.kt
+git add app/src/test/java/com/example/uth_todo/HomeViewModelTest.kt app/src/test/java/com/example/uth_todo/TaskDetailTest.kt app/src/test/java/com/example/uth_todo/TaskCreateTest.kt
 git diff --cached --stat
 git diff --cached
-git commit -m "feat: implement task detail editing and deletion"
-git push -u origin feature/task-detail-api
+git commit -m "feat: add task creation flow"
+git push -u origin feature/task-create-api
 ```
 
-Các lệnh trên để người dùng thực hiện; agent chưa chạy thao tác Git ghi. Không stage token, config Firebase, local.properties, cấu hình IDE/công cụ hoặc cache.
+Đây là hướng dẫn cho người dùng, agent chưa thực thi thao tác Git ghi. Không stage token, Firebase config, local.properties, cấu hình IDE/công cụ hoặc cache.
 
-## Sau mốc này
+## Phần tiếp theo
 
-Hoàn thiện Thêm công việc mới theo API POST sau khi Chi tiết được nghiệm thu và chốt commit. Sau đó đối chiếu các màn hình còn lại của đề, gồm nhắc theo giờ và Cài đặt; chưa tự coi toàn bộ app đã hoàn tất.
+Chưa chuyển mốc khi việc tạo “Lau nha” chưa được lưu/đọc lại đúng. Sau khi chốt Thêm công việc, đối chiếu Thông báo/nhắc việc theo giờ và Cài đặt để tiếp tục hoàn thiện app. remind hiện là tùy chọn được lưu, chưa lập lịch thông báo theo giờ. Chưa coi toàn bộ app đã hoàn tất.
 
-Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật. Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
+Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật; nếu chưa merge, kế thừa commit mốc trước đã nghiệm thu và chọn base PR tương ứng.
