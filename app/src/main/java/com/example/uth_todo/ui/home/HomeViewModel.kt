@@ -50,7 +50,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         if (key != null) refresh()
     }
 
-    fun onHomeOpened() { if (sessionKey != null) refresh() }
+    fun onTaskScreenOpened() { if (sessionKey != null) refresh() }
 
     fun refresh() {
         val state = mutableState.value

@@ -1,61 +1,67 @@
 # Lộ trình nhánh UTH Todo
 
-Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng; thao tác Git làm thay đổi trạng thái do người dùng thực hiện.
+Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng. Người dùng thực hiện mọi thao tác Git làm thay đổi trạng thái.
 
 | Mốc | Nhánh | Trạng thái |
 |---|---|---|
 | BTVN 01 | `feature/btvn01-navigation-oop` | Commit `c4a0623`, người dùng đã thử |
 | BTVN 02 | `feature/btvn02-firebase-auth` | Commit `4f3002e`, người dùng xác nhận Google/email chạy được |
-| BTVN 03 | `feature/btvn03-firebase-services` | Commit `028f378`, người dùng đã build và xác nhận tự kiểm thử thành công |
-| BTVN 04 | `feature/btvn04-home-api` | Đã được người dùng build và xác nhận chạy thử thành công; 51 test riêng/compile nguồn đạt; đang ở đúng nhánh, sẵn sàng commit/push |
-| Flow danh sách | `feature/task-list-api` | BTVN 04 đã có danh sách xem nhanh; màn hình riêng và flow đầy đủ còn đối chiếu |
-| Flow chi tiết | `feature/task-detail-api` | BTVN 04 chỉ xem nhanh dữ liệu list; GET theo ID, sửa/xóa và CRUD chưa triển khai |
+| BTVN 03 | `feature/btvn03-firebase-services` | Commit `028f378`, người dùng đã build/tự kiểm thử thành công |
+| BTVN 04 | `feature/btvn04-home-api` | Commit `1fbfbf0`, người dùng đã build/chạy thử thành công |
+| Flow danh sách | `feature/task-list-api` dự kiến | Màn hình riêng và điều hướng đã triển khai; 57 unit test riêng đạt, chờ build Gradle và thử thiết bị |
+| Flow chi tiết | `feature/task-detail-api` dự kiến | Tiếp theo: GET theo ID, sửa/xóa theo hợp đồng API; hiện chỉ có hộp xem nhanh dữ liệu list |
 | BTVN 05 | Chưa đặt | Đề chưa đủ mô tả, không tự gán tính năng |
 
-BTVN 04 được đối chiếu ảnh đề cục bộ: Home, ảnh flow danh sách/chi tiết và ảnh response GET có mảng JSON. Figma/prototype và live API chưa truy cập được. Không coi việc compile với fixture là đã chạy API thật.
+Flow danh sách đối chiếu ảnh màn hình “Danh sách” trong file đề cục bộ. Gọi GET/PATCH từ repository BTVN 04; tìm kiếm/lọc phía ứng dụng. Không thêm endpoint chưa có trong đề.
 
-## Kiểm tra nhánh BTVN 04
+## Nhánh hiện tại
 
-Base là BTVN 03 ở `028f378`. Người dùng đã tạo/chọn `feature/btvn04-home-api`; mã BTVN 04 đang trong working tree và chưa stage. Agent không tự tạo/chuyển nhánh, stage, commit, push hoặc merge.
+Base là BTVN 04 ở `1fbfbf0`. Khi triển khai, nhánh vẫn là `feature/btvn04-home-api`; thay đổi danh sách chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
 
-Người dùng chạy:
+Người dùng tự chạy trước khi chốt mốc:
 
 ```powershell
 git status
 git branch --show-current
+git switch -c feature/task-list-api
 ```
 
-Nhánh hiện tại đã kế thừa BTVN 03, không cần tạo lại. Đọc status/lịch sử trước khi thao tác Git; không reset/clean để bỏ thay đổi.
+Nhánh mới kế thừa Home đã nghiệm thu và mang theo thay đổi working tree. Không reset/clean hoặc tạo lại nếu nhánh này đã được tạo sau khi tài liệu được viết.
 
 ## Build và nghiệm thu
 
-Token mock từ đề đã được lưu trong `api.local.properties` bị Git bỏ qua. Khi pull ở máy khác, tạo file từ template hoặc cung cấp biến `UTH_MOCK_API_TOKEN`. Xem [BTVN04-REPORT.md](BTVN04-REPORT.md).
+Token mock nằm trong `api.local.properties` bị Git bỏ qua. Máy khác cần tạo file từ template hoặc cung cấp biến `UTH_MOCK_API_TOKEN`. Giữ cấu hình Firebase của máy đang hoạt động.
 
 ```powershell
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
-Người dùng đã cung cấp ảnh build thành công và xác nhận đã chạy thử thành công hết các luồng đã kiểm tra. Sẵn sàng chốt phần Home BTVN 04 theo nghiệm thu người dùng; agent không tự vận hành thiết bị hoặc coi xác nhận này là log riêng cho từng API. Người dùng tự stage:
+Sau đó Run và thực hiện checklist trong [TASK-LIST-REPORT.md](TASK-LIST-REPORT.md): mở từ mọi điểm vào Home, tìm kiếm/lọc, hoàn thành công việc, kiểm tra Home đồng bộ, Back/Hồ sơ và phiên đăng nhập.
+
+Trong môi trường agent, wrapper bị chặn quyền mở file khóa trước khi chạy task. 57 test JUnit riêng, 49 file Kotlin/Compose, mã Android test và resources đã kiểm tra đạt; không thay thế kết quả Gradle hoặc thử trên thiết bị.
+
+## Commit/push sau khi chạy đạt
+
+Các lệnh dưới đây để người dùng thực hiện sau khi xem diff và nghiệm thu:
 
 ```powershell
+git branch --show-current
 git diff --stat
 git diff
 git ls-files --others --exclude-standard
-git add .gitignore README.md api.local.properties.example app/build.gradle.kts gradle/libs.versions.toml
-git add app/src/main/java/com/example/uth_todo app/src/main/res/values/strings.xml
-git add app/src/test/java/com/example/uth_todo/HomeViewModelTest.kt app/src/test/java/com/example/uth_todo/TaskApiTest.kt app/src/test/resources/tasks-list.json
-git add docs/BRANCH-ROADMAP.md docs/BTVN04-REPORT.md
+git add README.md docs/BRANCH-ROADMAP.md docs/TASK-LIST-REPORT.md
+git add app/src/main app/src/androidTest app/src/test/java/com/example/uth_todo/TaskListViewModelTest.kt
 git diff --cached --stat
 git diff --cached
-git commit -m "BTVN 04: Home UI and task API"
-git push -u origin feature/btvn04-home-api
+git commit -m "feat: implement task list screen and navigation"
+git push -u origin feature/task-list-api
 ```
 
-Đây là hướng dẫn, chưa được agent thực thi. Không dùng git add toàn bộ thư mục gốc: cấu hình công cụ/IDE, config Firebase, token cục bộ và cache không thuộc commit.
+Không stage cấu hình IDE/công cụ, config Firebase, token cục bộ hoặc cache. Đây là hướng dẫn, agent chưa thực thi các thao tác ghi Git.
 
 ## Mốc sau
 
-- Hoàn thiện các flow danh sách/chi tiết theo hợp đồng API, không giả báo đã lưu/xóa khi chưa được API xác nhận.
-- Nếu main đã được người dùng merge mốc trước, tạo nhánh mới từ main đã cập nhật.
-- Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
-- Không tạo hàng loạt nhánh rỗng hoặc gộp toàn bộ tính năng vào một lần push main.
+- Hoàn thiện flow chi tiết sau khi danh sách được người dùng build/chạy đạt và chốt commit.
+- Dùng GET theo ID và xác nhận API khi sửa/xóa; không báo lưu/xóa thành công trước ACK.
+- Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật. Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
+- Phần thêm mới và CRUD đầy đủ chỉ triển khai theo đề/hợp đồng API được xác minh.

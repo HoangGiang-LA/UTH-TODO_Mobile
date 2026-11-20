@@ -7,16 +7,17 @@
 | BTVN 01 | Splash/onboarding/Navigation + OOP; commit `c4a0623`, người dùng đã thử app |
 | BTVN 02 | Google/email/Guest/Profile; commit `4f3002e`, người dùng xác nhận chạy được |
 | BTVN 03 | RTDB, FCM, Analytics, Crashlytics, Remote Config; commit `028f378`, người dùng đã build và tự kiểm thử; Gradle 35/35 unit test, lint 0 lỗi/24 warning |
-| BTVN 04 | Home UI/API, tiến độ/ngày, danh sách xem nhanh/tìm kiếm/lọc và đánh dấu hoàn thành; người dùng đã xác nhận build/chạy thử thành công, sẵn sàng commit/push |
+| BTVN 04 | Home UI/API, tiến độ/ngày và đánh dấu hoàn thành; commit `1fbfbf0`, người dùng đã build/chạy thử thành công |
+| Flow danh sách | Màn hình riêng, tìm kiếm/lọc, nhóm Cần làm/Đã xong và đồng bộ Home; đã triển khai, chờ người dùng build/chạy thử |
 
-Xem [báo cáo BTVN 04](docs/BTVN04-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), và báo cáo [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
+Xem [báo cáo flow danh sách](docs/TASK-LIST-REPORT.md), [báo cáo BTVN 04](docs/BTVN04-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), và báo cáo [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
 
-## Chạy BTVN 04
+## Chạy flow danh sách
 
-Người dùng đã ở `feature/btvn04-home-api` và xác nhận build/chạy thử thành công. Các thay đổi chưa stage/commit; khi cần tái kiểm tra, chạy:
+Base Home BTVN 04 đã được commit ở `1fbfbf0`. Mã màn hình danh sách hiện nằm trong working tree trên `feature/btvn04-home-api`, chưa stage/commit. Người dùng tự tạo nhánh cho mốc này trước khi chốt:
 
 ```powershell
-git branch --show-current
+git switch -c feature/task-list-api
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
@@ -35,8 +36,10 @@ Token này là thông tin truy cập API mock của môn học, độc lập v�
 - Header dùng tên hồ sơ đã đồng bộ; avatar/Cài đặt mở Hồ sơ hiện có.
 - Tiến độ là số việc đã xong/tổng số việc trong ngày đang chọn.
 - Hai thẻ Học tập/Cuộc sống đếm mọi việc chưa xong của nhóm, kể cả ngày khác.
-- Home hiển thị tối đa 8 việc trong ngày theo giờ; Xem tất cả hoặc thẻ nhóm mở danh sách đầy đủ dạng bottom sheet.
-- Danh sách có tìm kiếm tiếng Việt không cần dấu, lọc nhóm, chia Cần làm/Đã xong.
+- Home hiển thị tối đa 8 việc trong ngày theo giờ. Xem tất cả/thanh Danh sách mở màn hình danh sách riêng với bộ lọc Tất cả; thẻ Học tập/Cuộc sống truyền đúng nhóm ban đầu.
+- Danh sách có tìm kiếm tiếng Việt không cần dấu, nút xóa tìm kiếm, lọc nhóm, chia Cần làm/Đã xong và ngày/giờ của từng việc. Số việc cần làm phản ánh kết quả lọc/tìm kiếm đang hiển thị.
+- Tìm kiếm/bộ lọc lưu bằng SavedStateHandle theo lần mở màn hình; vị trí cuộn dùng LazyListState. Đi Hồ sơ rồi Back giữ trạng thái danh sách. Back/Home trở về Home; mở danh sách lần mới áp dụng nhóm được chọn từ Home.
+- Home và danh sách dùng chung HomeViewModel; vào màn hình hoặc bấm tải lại sẽ GET dữ liệu, checkbox chờ PATCH thành công rồi cập nhật cả hai màn hình.
 - Bấm một việc để xem nhanh nội dung đang có trong danh sách. Đây chưa phải flow chi tiết tải lại riêng bằng API.
 - Checkbox gửi PATCH và chờ ACK 2xx rồi mới cập nhật tiến độ; lỗi giữ trạng thái cũ và cho thử lại.
 - Tải ban đầu, tải lại, danh sách rỗng và lỗi được phân biệt. Không diễn giải JSON sai/401/500 thành danh sách rỗng.
@@ -65,16 +68,16 @@ Không stage `google-services.json`, `api.local.properties`, `local.properties`,
 
 ## Kiểm tra
 
-| BTVN 04 | Kết quả trong môi trường agent |
+| Flow danh sách | Kết quả trong môi trường agent |
 |---|---|
-| Unit test chạy riêng bằng Kotlin 2.2.10/JUnit | 51/51 đạt: 25 test API/Home mới + 26 Auth/Firebase hồi quy |
-| Biên dịch riêng 46 source Kotlin/Compose với thư viện có sẵn, header R/BuildConfig phục vụ kiểm tra nguồn | Đạt; chưa phải APK/build Gradle |
+| Unit test chạy riêng bằng Kotlin 2.2.10/JUnit | 57/57 đạt: 51 test Auth/Firebase/API/Home + 6 test danh sách/ngày mới |
+| Biên dịch riêng 49 source Kotlin/Compose với thư viện có sẵn, header R/BuildConfig phục vụ kiểm tra nguồn | Đạt; chưa phải APK/build Gradle |
+| Biên dịch mã Android test với thư viện có sẵn | Đạt; 15 test, gồm 6 test mới; chưa chạy trên thiết bị |
 | AAPT2 compile resources | Đạt |
-| assembleDebug/testDebugUnitTest/lintDebug qua wrapper | Bị chặn file khóa wrapper, Access is denied |
-| Gọi API thật/Figma/prototype | Không truy cập được; host bị chặn DNS, trang thiết kế không đọc được qua công cụ |
-| UI/API trên thiết bị theo xác nhận người dùng | Người dùng báo đã build và chạy thử thành công; agent không tự vận hành thiết bị |
+| assembleDebug/testDebugUnitTest/lintDebug qua wrapper | Bị chặn mở file khóa wrapper, Access is denied; chưa xác nhận APK/lint của mốc này |
+| UI/API thật của màn hình danh sách mới | Chờ người dùng chạy; agent chưa vận hành thiết bị hoặc xác minh live API |
 
-Bố cục/JSON dựa trên ảnh nhúng trong file đề cục bộ; chưa khẳng định khớp từng pixel Figma hoặc đã gọi API thật thành công. Kết quả Gradle 35 test/lint ở BTVN 03 là lịch sử. BTVN 04 đã được người dùng cung cấp ảnh BUILD SUCCESSFUL và sau đó xác nhận chạy thử thành công; số test/lint mới không được suy diễn từ kết quả cũ.
+Bố cục/JSON dựa trên ảnh nhúng trong file đề cục bộ; Figma/prototype và live API chưa truy cập được qua công cụ. Kết quả build/chạy thử người dùng đã xác nhận cho BTVN 04 là lịch sử của phần Home, chưa chứng minh màn hình danh sách mới đã chạy đạt. Mã Android test còn một cảnh báo deprecation của createComposeRule hiện có.
 
 ## Cấu trúc
 
@@ -87,9 +90,10 @@ Các đường dẫn Kotlin tính từ `app/src/main/java/com/example/uth_todo/`
 | `data/auth/`, `data/preferences/` | Firebase Auth/Credential Manager và onboarding DataStore |
 | `data/firebase/`, `notifications/` | Hồ sơ RTDB, Remote Config/telemetry, FCM |
 | `data/tasks/` | HTTP/JSON API, ngày, lọc/tìm kiếm và thống kê |
-| `ui/home/` | HomeViewModel, tiến độ, thẻ công việc, danh sách/xem nhanh |
+| `ui/home/` | HomeViewModel dùng chung dữ liệu, tiến độ, thẻ công việc/xem nhanh |
+| `ui/tasklist/` | Màn hình danh sách, state tìm kiếm/bộ lọc theo NavBackStackEntry |
 | `ui/profile/` | Hồ sơ, lưu tên, quyền thông báo |
 | `ui/onboarding/`, `ui/splash/`, `ui/welcome/`, `ui/auth/` | Khởi động và đăng nhập |
-| `ui/components/`, `ui/theme/` | Thành phần, typography và minh họa dùng chung |
+| `ui/components/`, `ui/theme/` | Thanh điều hướng Home/Danh sách, thành phần, typography và minh họa dùng chung |
 
 Giữ SDK 37/minSdk 24, AGP 9.4.1, Gradle 9.6.0, Kotlin 2.2.10, Java source/target 11 và cấu hình máy đang hoạt động. Không đổi versionName hoặc nâng Firebase BoM.

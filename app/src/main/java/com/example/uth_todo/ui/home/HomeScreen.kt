@@ -1,9 +1,7 @@
 package com.example.uth_todo.ui.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -15,13 +13,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.uth_todo.R
 import com.example.uth_todo.data.tasks.TaskDates
 import com.example.uth_todo.data.tasks.forDate
 import com.example.uth_todo.data.tasks.summary
 import com.example.uth_todo.model.*
 import com.example.uth_todo.ui.components.PrimaryButton
+import com.example.uth_todo.ui.components.TaskBottomBar
+import com.example.uth_todo.ui.components.TaskTab
 import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +28,7 @@ import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 fun HomeScreen(
     session: AuthSession,
     onProfile: () -> Unit,
+    onOpenList: (TaskFilter) -> Unit,
     displayName: String? = null,
     announcement: String? = null,
     state: HomeUiState = HomeUiState(error = TaskApiError.NOT_CONFIGURED),
@@ -42,7 +42,6 @@ fun HomeScreen(
     val initials = name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase()
     val summary = remember(state.tasks, state.selectedDate) { state.tasks.summary(state.selectedDate) }
     val dayTasks = remember(state.tasks, state.selectedDate) { state.tasks.forDate(state.selectedDate) }
-    var listFilter by rememberSaveable { mutableStateOf<String?>(null) }
     var previewId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDate by rememberSaveable { mutableStateOf(false) }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
@@ -74,9 +73,9 @@ fun HomeScreen(
             TaskProgressCard(summary, state.hasLoaded, isToday)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryCard(TaskCategory.STUDY, summary.studyRemaining, state.hasLoaded,
-                    onClick = { listFilter = TaskFilter.STUDY.name }, modifier = Modifier.weight(1f))
+                    onClick = { onOpenList(TaskFilter.STUDY) }, modifier = Modifier.weight(1f))
                 CategoryCard(TaskCategory.LIFE, summary.lifeRemaining, state.hasLoaded,
-                    onClick = { listFilter = TaskFilter.LIFE.name }, modifier = Modifier.weight(1f))
+                    onClick = { onOpenList(TaskFilter.LIFE) }, modifier = Modifier.weight(1f))
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(if (isToday) R.string.home_tasks_today else R.string.home_tasks_day),
@@ -85,7 +84,7 @@ fun HomeScreen(
                     modifier = Modifier.testTag("home_refresh").semanticsLabel(stringResource(R.string.tasks_refresh))) {
                     HomeGlyph(HomeIcon.REFRESH)
                 }
-                TextButton(onClick = { listFilter = TaskFilter.ALL.name }, enabled = state.hasLoaded) {
+                TextButton(onClick = { onOpenList(TaskFilter.ALL) }, modifier = Modifier.testTag("home_view_all")) {
                     Text(stringResource(R.string.home_view_all))
                 }
             }
@@ -111,26 +110,9 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
         }
-        Surface(shadowElevation = 5.dp) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                HomeNavItem(HomeIcon.HOME, stringResource(R.string.home_title), true, { listFilter = null }, Modifier.weight(1f))
-                HomeNavItem(HomeIcon.LIST, stringResource(R.string.tasks_list_title), false,
-                    { listFilter = TaskFilter.ALL.name }, Modifier.weight(1f), enabled = state.hasLoaded)
-                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    FloatingActionButton(onClick = { showCreateNotice = true }, shape = CircleShape,
-                        containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(50.dp).semanticsLabel(stringResource(R.string.task_add))) {
-                        HomeGlyph(HomeIcon.PLUS, color = MaterialTheme.colorScheme.onPrimary)
-                    }
-                }
-                HomeNavItem(HomeIcon.BELL, stringResource(R.string.notifications_title), false,
-                    { showNotifications = true }, Modifier.weight(1f))
-                HomeNavItem(HomeIcon.SETTINGS, stringResource(R.string.settings_title), false, onProfile, Modifier.weight(1f))
-            }
-        }
+        TaskBottomBar(TaskTab.HOME, onHome = {}, onList = { onOpenList(TaskFilter.ALL) },
+            onNotifications = { showNotifications = true }, onProfile = onProfile, onAdd = { showCreateNotice = true })
     }
-    listFilter?.let { filter -> TaskListSheet(state, TaskFilter.valueOf(filter), onDismiss = { listFilter = null },
-        onToggle = onToggle, onOpen = { previewId = it }) }
     state.tasks.firstOrNull { it.id == previewId }?.let { TaskPreviewDialog(it, onDismiss = { previewId = null }) }
     if (showDate) {
         val picker = rememberDatePickerState(initialSelectedDateMillis = TaskDates.toUtcMillis(state.selectedDate))
@@ -148,17 +130,6 @@ fun HomeScreen(
     if (showCreateNotice) AlertDialog(onDismissRequest = { showCreateNotice = false },
         title = { Text(stringResource(R.string.task_add)) }, text = { Text(stringResource(R.string.task_add_unavailable)) },
         confirmButton = { TextButton(onClick = { showCreateNotice = false }) { Text(stringResource(R.string.close_action)) } })
-}
-
-@Composable
-private fun HomeNavItem(icon: HomeIcon, label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier, enabled: Boolean = true) {
-    val color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-    TextButton(onClick = onClick, modifier = modifier, enabled = enabled, contentPadding = PaddingValues(horizontal = 1.dp, vertical = 2.dp)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            HomeGlyph(icon, color = color)
-            Text(label, fontSize = 10.sp, lineHeight = 12.sp, color = color, maxLines = 2)
-        }
-    }
 }
 
 private fun Modifier.semanticsLabel(value: String): Modifier = this.then(
