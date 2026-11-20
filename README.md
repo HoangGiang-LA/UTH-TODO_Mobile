@@ -1,99 +1,80 @@
 # UTH Todo
 
-Ứng dụng Android Kotlin + Jetpack Compose, triển khai theo từng bài tập của môn Lập trình di động.
+Ứng dụng Android Kotlin + Jetpack Compose, phát triển theo từng bài tập môn Lập trình di động.
 
-- **BTVN 01:** Splash, ba trang onboarding, Navigation/OOP; đã commit/push ở `c4a0623`. Người dùng đã báo chạy thử thành công.
-- **BTVN 02:** Google/email, Guest, Home/Profile và đăng xuất; người dùng xác nhận chạy thử thành công và đã commit `4f3002e` trên `feature/btvn02-firebase-auth`.
-- **BTVN 03:** người dùng đã xác nhận tự kiểm thử thành công và gửi ảnh hồ sơ ghi lên RTDB. Build Android đạt **35/35 unit test, lint 0 lỗi/24 warning**. Sẵn sàng commit/push trên `feature/btvn03-firebase-services`; 16 test rules emulator trong môi trường agent vẫn chưa chạy được.
+| Mốc | Kết quả |
+|---|---|
+| BTVN 01 | Splash/onboarding/Navigation + OOP; commit `c4a0623`, người dùng đã thử app |
+| BTVN 02 | Google/email/Guest/Profile; commit `4f3002e`, người dùng xác nhận chạy được |
+| BTVN 03 | RTDB, FCM, Analytics, Crashlytics, Remote Config; commit `028f378`, người dùng đã build và tự kiểm thử; Gradle 35/35 unit test, lint 0 lỗi/24 warning |
+| BTVN 04 | Home UI/API, tiến độ/ngày, danh sách xem nhanh/tìm kiếm/lọc và đánh dấu hoàn thành; người dùng đã xác nhận build/chạy thử thành công, sẵn sàng commit/push |
 
-Build trước sửa Google đã có `BUILD SUCCESSFUL`, 19 unit Gradle đạt và lint 0 lỗi/23 warning. Sau đó đã chuyển nút Google sang `GetSignInWithGoogleOption`, xử lý riêng thiếu tài khoản và thêm log loại lỗi `UthGoogleAuth`; Google client biên dịch riêng được, 12 unit Auth chạy riêng đạt. Kết quả chạy app sau sửa Google được người dùng xác nhận thành công; agent không tự thao tác tài khoản Google trên thiết bị.
+Xem [báo cáo BTVN 04](docs/BTVN04-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), và báo cáo [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
 
-Xem [cấu hình và nghiệm thu BTVN 03](docs/BTVN03-REPORT.md), [báo cáo BTVN 02](docs/BTVN02-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md) và [báo cáo BTVN 01](docs/BTVN01-REPORT.md).
+## Chạy BTVN 04
 
-## Chức năng
-
-- Splash và onboarding có Tiếp tục, Bỏ qua, Bắt đầu ngay, vuốt, Back và saved state.
-- DataStore lưu hoàn tất onboarding, độc lập với phiên đăng nhập.
-- Google qua Credential Manager và Firebase Auth; email có đăng nhập, đăng ký, gửi email đặt lại mật khẩu.
-- Dùng thử bằng phiên Guest trong tiến trình, không tạo tài khoản Firebase giả.
-- Home tối thiểu của BTVN 02 và hồ sơ lấy tên/email/UID/xác minh từ Firebase User.
-- Chặn bấm lặp, xử lý hủy Google, lỗi và timeout; đăng xuất dọn Back stack.
-- Chuỗi tiếng Việt trong resources, nội dung cuộn cho màn hình nhỏ, bàn phím và font lớn.
-
-BTVN 03 bổ sung đồng bộ tên theo UID trong Hồ sơ, thông báo chung FCM, banner Remote Config, sự kiện Analytics và Crashlytics. API công việc, thống kê và CRUD công việc thuộc BTVN 04/các flow sau. FCM hiện chưa phải bộ lập lịch nhắc hạn cá nhân.
-
-## Bắt đầu BTVN 03
-
-File Android đã có `firebase_url`; người dùng đã build và tự kiểm thử thành công, có ảnh dữ liệu hồ sơ trong Realtime Database. Hướng dẫn cấu hình và các bước kiểm thử được giữ trong [báo cáo BTVN 03](docs/BTVN03-REPORT.md). Giữ gói Spark, không bật Storage hoặc deploy Functions trong đợt này.
-
-Người dùng đã ở nhánh BTVN 03; có thể kiểm tra bằng:
+Người dùng đã ở `feature/btvn04-home-api` và xác nhận build/chạy thử thành công. Các thay đổi chưa stage/commit; khi cần tái kiểm tra, chạy:
 
 ```powershell
 git branch --show-current
-```
-
-Agent chưa tạo/chuyển nhánh, stage, commit hoặc push. Hồ sơ database chỉ được ghi khi đăng nhập và bấm lưu tên; rules chưa được publish tự động. Kết quả build BTVN 02 dưới đây là lịch sử, không phải bằng chứng build BTVN 03.
-
-## Luồng
-
-```mermaid
-flowchart TD
-    S["Splash"] --> D{"Đã xem giới thiệu?"}
-    D -->|Chưa| O["Onboarding"]
-    D -->|Rồi| A{"Có phiên?"}
-    O -->|Hoàn tất| A
-    A -->|Chưa| W["Màn hình chào"]
-    A -->|Có| H["Trang chủ"]
-    W -->|Google, email hoặc dùng thử| H
-    H --> P["Hồ sơ"]
-    P -->|Đăng xuất| W
-```
-
-Firebase SDK khôi phục phiên thật. Guest không lưu qua lần khởi động mới của tiến trình. Profile Back về Home; đăng xuất xóa Home/Profile khỏi stack. Cờ onboarding không phải trạng thái đăng nhập.
-
-## Cấu hình Firebase
-
-Người dùng đã bổ sung `app/google-services.json`; đã kiểm tra file khớp package `com.example.uth_todo` và có Google Web OAuth client. Người dùng đã xác nhận đăng nhập hoạt động ở BTVN 02. Khi cài trên máy khác chưa có config, chế độ khách vẫn dùng được và đăng nhập thông báo chưa sẵn sàng.
-
-1. Mở [Firebase Console](https://console.firebase.google.com/), tạo/chọn dự án UTH Todo và đăng ký Android package `com.example.uth_todo`.
-2. Trong Terminal Android Studio chạy `.\gradlew.bat signingReport`; thêm SHA-1/SHA-256 debug vào Android app Firebase.
-3. Authentication → Sign-in method: bật Google và Email/Password.
-4. Tải lại `google-services.json` sau khi bật Google, đặt tại `app/google-services.json`.
-5. Sync Gradle, Run trên thiết bị có Google Play services và tài khoản Google để thử Google sign-in.
-
-Cần config Android của UTH Todo, không phải JSON Admin SDK/service account hoặc file English Battle. Google Services plugin áp dụng khi file module tồn tại; không cần sửa SDK path/JDK. File cấu hình riêng được Git bỏ qua.
-
-Google sign-in dùng được trên gói Spark trong hạn mức miễn phí; không cần nâng Blaze chỉ để thử tính năng này. File config hiện tại chỉ có OAuth Web (client type 3), vì vậy cần đối chiếu SHA-1 debug trong Project settings → Android app rồi tải lại config nếu đã thay đổi. Việc không thấy OAuth Android trong file không chứng minh cấu hình trên Console bị thiếu; cần kiểm tra trực tiếp. Thiết bị cần có Google Play services và tài khoản Google sử dụng được.
-
-Nếu còn lỗi sau khi Run lại, đọc Logcat với tag `UthGoogleAuth`; log chỉ ghi loại lỗi, không ghi token hoặc tài khoản. Nguồn giá: [Firebase Pricing](https://firebase.google.com/pricing).
-
-Nguồn: [Firebase Android setup](https://firebase.google.com/docs/android/setup), [Google sign-in](https://firebase.google.com/docs/auth/android/google-signin).
-
-## Cấu hình và kiểm tra
-
-Giữ minSdk 24, SDK 37, AGP 9.4.1, Gradle 9.6.0, Kotlin Compose 2.2.10, versionName 1.0, tiêu chí daemon JDK 25 và Java source/target 11. Không sửa `local.properties` hoặc cấu hình máy.
-
-Dependency mới trong version catalog: Firebase BoM 34.7.0/Auth 24.0.1 main module, Google Services 4.6.0, Credentials 1.6.0, Google ID 1.1.1, coroutine Play Services 1.10.2. BoM được giữ ở phiên bản này để tránh Auth 25.0.0 có Kotlin metadata 2.4 không khớp compiler Kotlin 2.2 hiện tại; không nâng Kotlin/SDK để xử lý lỗi dependency.
-
-```powershell
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
-Khi thiết bị ADB đã kết nối:
+Sau đó Run trên thiết bị có mạng. Home lấy công việc thật từ endpoint mock trong đề; không dùng fixture test để giả lập dữ liệu thành công khi mất mạng.
 
-```powershell
-.\gradlew.bat connectedDebugAndroidTest
-```
+Token mock từ đề đã được đặt trong `api.local.properties` trên máy hiện tại và file đã được Git bỏ qua. Khi clone sang máy khác:
 
-| Kiểm tra lần BTVN 02 | Kết quả |
+1. Sao chép `api.local.properties.example` thành `api.local.properties`.
+2. Điền `MOCK_API_TOKEN` bằng token được cấp trong đề, rồi Sync/build lại.
+3. Có thể dùng biến môi trường `UTH_MOCK_API_TOKEN` thay file; biến môi trường được ưu tiên.
+
+Token này là thông tin truy cập API mock của môn học, độc lập với phiên Firebase. Không dùng Firebase ID token hoặc service account. Giá trị được biên dịch vào APK để client gửi request, nên đây không phải cách giữ bí mật một khóa máy chủ trong ứng dụng production. Token thật không nằm trong source, template hoặc tài liệu Git.
+
+## Trang chủ và API
+
+- Header dùng tên hồ sơ đã đồng bộ; avatar/Cài đặt mở Hồ sơ hiện có.
+- Tiến độ là số việc đã xong/tổng số việc trong ngày đang chọn.
+- Hai thẻ Học tập/Cuộc sống đếm mọi việc chưa xong của nhóm, kể cả ngày khác.
+- Home hiển thị tối đa 8 việc trong ngày theo giờ; Xem tất cả hoặc thẻ nhóm mở danh sách đầy đủ dạng bottom sheet.
+- Danh sách có tìm kiếm tiếng Việt không cần dấu, lọc nhóm, chia Cần làm/Đã xong.
+- Bấm một việc để xem nhanh nội dung đang có trong danh sách. Đây chưa phải flow chi tiết tải lại riêng bằng API.
+- Checkbox gửi PATCH và chờ ACK 2xx rồi mới cập nhật tiến độ; lỗi giữ trạng thái cũ và cho thử lại.
+- Tải ban đầu, tải lại, danh sách rỗng và lỗi được phân biệt. Không diễn giải JSON sai/401/500 thành danh sách rỗng.
+- Đăng xuất/đổi tài khoản hủy request và xóa state trước; API mock dùng bộ dữ liệu chung theo token, không phải dữ liệu task riêng theo Firebase UID.
+
+| Endpoint | Vai trò |
 |---|---|
-| Biên dịch riêng AuthSession/AuthRepository/AuthViewModel/AuthViewModelTest bằng Kotlin 2.2.10 có sẵn | Đạt |
-| JUnit AuthViewModelTest với dependency đã có | 10/10 đạt |
-| assembleDebug / testDebugUnitTest / lintDebug, lần người dùng chạy lại ngày 20/11 | BUILD SUCCESSFUL trong 15 giây; 19 unit test đạt, lint 0 lỗi/23 warning |
-| Wrapper trong môi trường agent sau sửa lint | Bị chặn trước biên dịch: Access is denied ở file khóa wrapper |
-| UI, Firebase thật, Google chooser sau sửa BTVN 02 | Người dùng xác nhận kiểm thử lại thành công; agent không tự thao tác tài khoản |
+| `GET https://share.tryapps.store/mock/teach/tasks` | Mảng công việc theo cấu trúc trong ảnh đề |
+| `PATCH https://share.tryapps.store/mock/teach/tasks/{id}` | Gửi `{"done":true}` hoặc `{"done":false}`; xử lý ACK 2xx |
 
-JUnit riêng dùng fake repository, không chứng minh Firebase thật. APK BTVN 02 đã qua assembleDebug ở lần chạy của người dùng; bản BTVN 03 cần build và chạy lại. Bộ UI test không mở tài khoản Google và không xóa dữ liệu app của người dùng.
+Có thể chọn ngày bằng cách bấm dòng ngày ở header. Nếu server trả dữ liệu mẫu thuộc một ngày cố định, xem ngày đó hoặc chọn Xem tất cả; không tự đổi ngày hệ thống hoặc gán ngày dữ liệu mẫu thành “hôm nay”. API mock có thể trả lại mẫu khi tải lại; chưa xác minh khả năng lưu thay đổi lâu dài.
+
+Chuông/thanh Thông báo mở phần bật FCM đã có. Nút thêm việc hiện thông báo chưa sẵn sàng; chưa có POST, xóa, sửa nội dung hoặc flow chi tiết CRUD.
+
+## Firebase
+
+Dùng `app/google-services.json` của đúng Android app `com.example.uth_todo`. Google Services/Crashlytics plugin chỉ áp dụng khi config tồn tại; Guest vẫn dùng được khi chưa cấu hình Auth.
+
+- Google/email, đăng ký, đặt lại mật khẩu và đăng xuất theo BTVN 02.
+- RTDB lưu tên ở `users/{uid}/profile`; email/UID/xác minh lấy từ Auth.
+- FCM nhận thông báo chung qua topic `uth_todo_updates`.
+- Remote Config điều khiển banner Home; Analytics ghi route/profile_saved; Crashlytics ghi lỗi bất thường đã loại thông tin tài khoản.
+- Giữ Spark theo phạm vi hiện tại. Cấu hình Console/rules và kiểm thử dịch vụ theo [BTVN03-REPORT.md](docs/BTVN03-REPORT.md).
+
+Không stage `google-services.json`, `api.local.properties`, `local.properties`, cấu hình IDE/công cụ hoặc cache.
+
+## Kiểm tra
+
+| BTVN 04 | Kết quả trong môi trường agent |
+|---|---|
+| Unit test chạy riêng bằng Kotlin 2.2.10/JUnit | 51/51 đạt: 25 test API/Home mới + 26 Auth/Firebase hồi quy |
+| Biên dịch riêng 46 source Kotlin/Compose với thư viện có sẵn, header R/BuildConfig phục vụ kiểm tra nguồn | Đạt; chưa phải APK/build Gradle |
+| AAPT2 compile resources | Đạt |
+| assembleDebug/testDebugUnitTest/lintDebug qua wrapper | Bị chặn file khóa wrapper, Access is denied |
+| Gọi API thật/Figma/prototype | Không truy cập được; host bị chặn DNS, trang thiết kế không đọc được qua công cụ |
+| UI/API trên thiết bị theo xác nhận người dùng | Người dùng báo đã build và chạy thử thành công; agent không tự vận hành thiết bị |
+
+Bố cục/JSON dựa trên ảnh nhúng trong file đề cục bộ; chưa khẳng định khớp từng pixel Figma hoặc đã gọi API thật thành công. Kết quả Gradle 35 test/lint ở BTVN 03 là lịch sử. BTVN 04 đã được người dùng cung cấp ảnh BUILD SUCCESSFUL và sau đó xác nhận chạy thử thành công; số test/lint mới không được suy diễn từ kết quả cũ.
 
 ## Cấu trúc
 
@@ -101,25 +82,14 @@ Các đường dẫn Kotlin tính từ `app/src/main/java/com/example/uth_todo/`
 
 | Thành phần | Trách nhiệm |
 |---|---|
-| `MainActivity.kt` | Một Activity, system splash, factory ViewModel |
-| `navigation/` | Destination, NavHost, điều hướng theo onboarding/phiên |
-| `model/` | Dữ liệu trang, phiên, hồ sơ, lỗi và thông báo |
-| `data/preferences/` | Cờ onboarding trong DataStore |
-| `data/auth/` | Hợp đồng xác thực, Firebase repository, Credential Manager |
-| `data/firebase/` | Hồ sơ RTDB, Remote Config và telemetry |
-| `notifications/` | Channel và service nhận FCM |
-| `ui/auth/` | Form email, ViewModel, ánh xạ thông báo |
-| `ui/home/`, `ui/profile/` | Home BTVN 02, hồ sơ thật/khách |
-| `ui/onboarding/`, `ui/splash/`, `ui/welcome/` | Khởi động, giới thiệu, chọn đăng nhập |
-| `ui/components/`, `ui/theme/` | Thành phần và minh họa offline dùng lại |
+| `MainActivity`, `navigation/` | Factory ViewModel, một Activity/NavHost, bind phiên và điều hướng |
+| `model/` | Phiên, hồ sơ, task/category/priority, nhóm lỗi và thống kê |
+| `data/auth/`, `data/preferences/` | Firebase Auth/Credential Manager và onboarding DataStore |
+| `data/firebase/`, `notifications/` | Hồ sơ RTDB, Remote Config/telemetry, FCM |
+| `data/tasks/` | HTTP/JSON API, ngày, lọc/tìm kiếm và thống kê |
+| `ui/home/` | HomeViewModel, tiến độ, thẻ công việc, danh sách/xem nhanh |
+| `ui/profile/` | Hồ sơ, lưu tên, quyền thông báo |
+| `ui/onboarding/`, `ui/splash/`, `ui/welcome/`, `ui/auth/` | Khởi động và đăng nhập |
+| `ui/components/`, `ui/theme/` | Thành phần, typography và minh họa dùng chung |
 
-## Nghiệm thu
-
-- Kiểm tra lại onboarding: Tiếp tục/vuốt/Back/xoay/Bỏ qua/Bắt đầu ngay.
-- Không có config: không crash; dùng thử → Home → hồ sơ khách → Đăng nhập để quay về Welcome.
-- Có config: đăng ký/email/Google, kiểm tra người dùng trong Firebase Authentication → Users và UID/email trong hồ sơ.
-- Thử dữ liệu sai, mật khẩu sai, email trùng, quên mật khẩu, hủy Google và bấm nhanh.
-- Mở lại app đã đăng nhập → Home; đăng xuất rồi Back không vào Home/Profile.
-- Thử font lớn, landscape, màn hình nhỏ và bàn phím mở.
-
-Nếu muốn xem lại onboarding từ đầu, người dùng tự Clear storage/gỡ app và chấp nhận mất dữ liệu cục bộ. Agent không reset dữ liệu.
+Giữ SDK 37/minSdk 24, AGP 9.4.1, Gradle 9.6.0, Kotlin 2.2.10, Java source/target 11 và cấu hình máy đang hoạt động. Không đổi versionName hoặc nâng Firebase BoM.

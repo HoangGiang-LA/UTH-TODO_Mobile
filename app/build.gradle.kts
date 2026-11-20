@@ -1,7 +1,20 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// The assignment's shared mock token is local configuration, separate from Auth.
+val mockApiProperties = Properties().apply {
+    val contents = providers.fileContents(rootProject.layout.projectDirectory.file("api.local.properties"))
+        .asText.orElse("").get()
+    load(contents.reader())
+}
+val mockApiToken = providers.environmentVariable("UTH_MOCK_API_TOKEN")
+    .orElse(mockApiProperties.getProperty("MOCK_API_TOKEN", "")).get().trim()
+val escapedMockApiToken = mockApiToken.replace("\\", "\\\\").replace("\"", "\\\"")
+    .replace("\r", "\\r").replace("\n", "\\n")
 
 // Allow UI/guest development without inventing a Firebase configuration.
 // Adding the real module config and syncing enables Google Services resources.
@@ -22,6 +35,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "MOCK_API_TOKEN", "\"$escapedMockApiToken\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -68,6 +82,8 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.google.identity)
     implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(platform(libs.androidx.compose.bom))
