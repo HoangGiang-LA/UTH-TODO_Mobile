@@ -13,6 +13,11 @@ sealed class AppDestination(val route: String) {
         fun location(filter: TaskFilter): String = "task_list?category=${filter.name}"
     }
     data object Profile : AppDestination("profile")
+    data object TaskCreate : AppDestination("task_create?category={category}&date={date}") {
+        const val CATEGORY_ARGUMENT = "category"
+        const val DATE_ARGUMENT = "date"
+        fun location(filter: TaskFilter, date: String): String = "task_create?category=${filter.name}&date=$date"
+    }
     data object TaskDetail : AppDestination("task_detail/{taskId}") {
         const val ID_ARGUMENT = "taskId"
         fun location(id: Long): String = "task_detail/$id"
@@ -20,6 +25,6 @@ sealed class AppDestination(val route: String) {
 
     companion object {
         fun requiresSession(route: String?): Boolean =
-            route == Home.route || route == TaskList.route || route == Profile.route || route == TaskDetail.route
+            route == Home.route || route == TaskList.route || route == Profile.route || route == TaskDetail.route || route == TaskCreate.route
     }
 }

@@ -29,6 +29,7 @@ import com.example.uth_todo.model.TodoTask
 import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.TaskBottomBar
 import com.example.uth_todo.ui.components.TaskTab
+import com.example.uth_todo.ui.components.TaskStorageNotice
 import com.example.uth_todo.ui.home.*
 import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
@@ -45,11 +46,11 @@ fun TaskListScreen(
     onHome: () -> Unit,
     onProfile: () -> Unit,
     onOpenTask: (Long) -> Unit = {},
+    onCreateTask: () -> Unit = {},
 ) {
     val content = remember(tasksState.tasks, listState) { listState.content(tasksState.tasks) }
     val scroll = rememberLazyListState()
     var showNotifications by rememberSaveable { mutableStateOf(false) }
-    var showCreateNotice by rememberSaveable { mutableStateOf(false) }
     val refreshLabel = stringResource(R.string.tasks_refresh)
     val clearLabel = stringResource(R.string.tasks_clear_search)
     val today = TaskDates.today()
@@ -77,6 +78,7 @@ fun TaskListScreen(
                             }
                         }
                     }
+                    TaskStorageNotice(tasksState.dataMode, onSettings = onProfile)
                     OutlinedTextField(listState.query, onValueChange = onQuery, singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),
@@ -146,14 +148,11 @@ fun TaskListScreen(
         TaskBottomBar(TaskTab.LIST, onHome = { focus.clearFocus(); onHome() }, onList = {},
             onNotifications = { focus.clearFocus(); showNotifications = true },
             onProfile = { focus.clearFocus(); onProfile() },
-            onAdd = { focus.clearFocus(); showCreateNotice = true })
+            onAdd = { focus.clearFocus(); onCreateTask() })
     }
     if (showNotifications) ModalBottomSheet(onDismissRequest = { showNotifications = false }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) { NotificationPreferenceCard() }
     }
-    if (showCreateNotice) AlertDialog(onDismissRequest = { showCreateNotice = false },
-        title = { Text(stringResource(R.string.task_add)) }, text = { Text(stringResource(R.string.task_add_unavailable)) },
-        confirmButton = { TextButton(onClick = { showCreateNotice = false }) { Text(stringResource(R.string.close_action)) } })
 }
 
 @Composable

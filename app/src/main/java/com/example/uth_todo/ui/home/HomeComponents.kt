@@ -187,5 +187,7 @@ fun TaskApiError.messageResource(): Int = when (this) {
     TaskApiError.TIMEOUT -> R.string.auth_error_timeout
     TaskApiError.RATE_LIMITED -> R.string.auth_error_attempts
     TaskApiError.INVALID_RESPONSE -> R.string.tasks_invalid_response
+    TaskApiError.CREATE_MISMATCH -> R.string.task_create_mismatch
+    TaskApiError.LOCAL_STORAGE -> R.string.task_storage_error
     TaskApiError.SERVER, TaskApiError.UNKNOWN -> R.string.tasks_server_error
 }

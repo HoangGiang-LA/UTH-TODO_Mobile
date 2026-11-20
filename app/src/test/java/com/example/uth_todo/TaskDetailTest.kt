@@ -291,6 +291,7 @@ private class DetailHttp(private val response: TaskHttpResponse) : TaskHttpClien
 }
 
 private class DetailFakeRepository : TaskRepository {
+    override suspend fun createTask(draft: TaskDraft): TodoTask = error("Not used by Detail regression tests")
     override val isConfigured = true
     var tasks = listOf(
         TodoTask(1, "Original", TaskCategory.STUDY, "2026-10-20", "14:00", false,

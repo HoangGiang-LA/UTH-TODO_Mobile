@@ -23,6 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.uth_todo.R
 import com.example.uth_todo.model.AuthSession
+import com.example.uth_todo.model.TaskDataMode
+import com.example.uth_todo.ui.components.TaskStorageSettingsCard
 import com.example.uth_todo.ui.components.BrandLogo
 import com.example.uth_todo.ui.components.PrimaryButton
 
@@ -37,6 +39,11 @@ fun ProfileScreen(
     onRetryProfile: () -> Unit = {},
     onNameEdited: () -> Unit = {},
     showNotifications: Boolean = false,
+    showTaskStorage: Boolean = false,
+    taskDataMode: TaskDataMode? = null,
+    isChangingTaskData: Boolean = false,
+    onTaskDataMode: (TaskDataMode) -> Unit = {},
+    hasUnsavedTaskChanges: Boolean = false,
 ) {
     val user = (session as? AuthSession.SignedIn)?.user
     val missing = stringResource(R.string.profile_not_provided)
@@ -68,6 +75,7 @@ fun ProfileScreen(
                     CloudProfileEditor(servicesState, user.displayName.orEmpty(), onSaveName, onRetryProfile, onNameEdited)
                 }
             }
+            if (showTaskStorage) TaskStorageSettingsCard(taskDataMode, isChangingTaskData || isBusy, onTaskDataMode, hasUnsavedTaskChanges)
             if (showNotifications) NotificationPreferenceCard()
             PrimaryButton(
                 stringResource(if (isBusy) R.string.auth_processing else if (session == AuthSession.Guest) R.string.auth_sign_in else R.string.profile_sign_out),

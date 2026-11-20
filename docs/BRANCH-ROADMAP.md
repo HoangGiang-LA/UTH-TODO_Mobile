@@ -1,57 +1,55 @@
 # Lộ trình nhánh UTH Todo
 
-Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng. Người dùng thực hiện mọi thao tác Git làm thay đổi trạng thái.
+Cập nhật 20/11/2026. Người dùng thực hiện mọi thao tác Git ghi; mỗi mốc được kiểm tra và commit riêng.
 
 | Mốc | Nhánh | Trạng thái |
 |---|---|---|
-| BTVN 01 | `feature/btvn01-navigation-oop` | Commit `c4a0623`, người dùng đã thử |
-| BTVN 02 | `feature/btvn02-firebase-auth` | Commit `4f3002e`, người dùng xác nhận chạy được |
-| BTVN 03 | `feature/btvn03-firebase-services` | Commit `028f378`, người dùng đã build/tự kiểm thử thành công |
-| BTVN 04 | `feature/btvn04-home-api` | Commit `1fbfbf0`, người dùng đã build/chạy thử thành công |
-| Flow danh sách | `feature/task-list-api` | Commit `4d0d14e`, người dùng xác nhận đã test và push hoàn tất |
-| Flow chi tiết | `feature/task-detail-api` dự kiến | Đã triển khai GET theo ID, sửa, việc nhỏ, hoàn thành và xóa; chờ build/chạy thử thiết bị |
-| Thêm công việc | Chưa tạo | Mốc tiếp theo; cần đối chiếu POST và màn hình theo đề |
-| BTVN 05 | Chưa đặt | Đề chưa đủ mô tả, không tự gán tính năng |
+| BTVN 01 | `feature/btvn01-navigation-oop` | `c4a0623`, đã thử |
+| BTVN 02 | `feature/btvn02-firebase-auth` | `4f3002e`, người dùng xác nhận chạy được |
+| BTVN 03 | `feature/btvn03-firebase-services` | `028f378`, đã build/tự kiểm thử |
+| BTVN 04 | `feature/btvn04-home-api` | `1fbfbf0`, đã build/chạy thử |
+| Danh sách | `feature/task-list-api` | `4d0d14e`, đã test/push theo người dùng |
+| Chi tiết | `feature/task-detail-api` | `b27f9d3`, đã test/push theo người dùng |
+| Tạo mới/API | `feature/task-create-api` | `f099f0c`; source đã commit, tạo “Lau nha” nhận task khác nên chưa nghiệm thu lưu API |
+| Lưu công việc thật trên thiết bị | Cùng `feature/task-create-api` | Đã triển khai; 114 unit test riêng đạt, có file thật; chờ build/chạy UI |
+| Thông báo/Cài đặt | Chưa tạo | Tiếp tục sau nghiệm thu lưu công việc |
+| BTVN 05 | Chưa đặt | Không tự gán khi đề chưa mô tả |
 
-## Nhánh hiện tại
+## Mốc đang làm
 
-Base là Danh sách ở `4d0d14e`. Khi triển khai Chi tiết, nhánh vẫn là `feature/task-list-api`; thay đổi mới chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
+Base hiện tại `f099f0c`, thay đổi mới trong working tree, chưa stage/commit. Chế độ mặc định lưu CRUD trên thiết bị, theo Guest/UID; API mẫu giữ nguyên ở lựa chọn riêng trong Hồ sơ. Không coi lưu cục bộ là đã sửa hoặc xác minh khả năng lưu server mock.
 
-Người dùng tự chạy:
+Agent không tạo/chuyển nhánh, stage, commit, push, merge hoặc reset app/emulator.
+
+## Build và nghiệm thu
 
 ```powershell
-git status
-git switch -c feature/task-detail-api
+git branch --show-current
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
-Nhánh mới kế thừa Danh sách đã nghiệm thu và mang theo thay đổi working tree. Không tạo lại nếu đã tạo nhánh này sau khi tài liệu được viết.
+Run → chọn Công việc trên thiết bị nếu cần → tạo “Lau nha” → tải lại/mở Chi tiết → đóng/mở app → sửa/tick/xóa và tải lại. Chuyển sang dữ liệu mẫu rồi trở lại phải còn dữ liệu đã lưu.
 
-## Nghiệm thu Chi tiết
+Xem [TASK-PERSISTENCE-REPORT.md](TASK-PERSISTENCE-REPORT.md). Kết quả hiện tại: 114 JUnit test riêng, 61 file Kotlin/Compose, mã 36 Android test và resources đạt kiểm tra; wrapper bị chặn file khóa, UI Android chưa chạy.
 
-Xem [TASK-DETAIL-REPORT.md](TASK-DETAIL-REPORT.md). Run rồi thử mở từ Home/Danh sách, sửa/lưu, thêm/sửa/bỏ việc nhỏ, hoàn thành, xác nhận xóa, Back giữ từ khóa/bộ lọc, tải lỗi và phiên không còn hợp lệ.
-
-Token/config cục bộ đang hoạt động được giữ nguyên. Máy khác tạo `api.local.properties` từ template hoặc dùng biến `UTH_MOCK_API_TOKEN`.
-
-Trong môi trường agent: 74 JUnit test riêng đạt, 50 source Kotlin/Compose và mã 23 Android test biên dịch đạt, resources đạt. Wrapper bị chặn mở file khóa, chưa xác nhận APK/lint. Android test và live API chưa chạy; cần kiểm tra payload PATCH/DELETE với mock thật.
+Đã sửa lỗi Windows trong test tạo đồng thời: serialize đọc/ghi bằng Mutex, không bỏ test. Nhóm 13 test lưu bền đạt 25 lượt liên tiếp; toàn bộ 114 test chạy riêng đạt. Gradle vẫn cần chạy lại trên máy người dùng.
 
 ## Stage, commit và push sau khi chạy đạt
 
 ```powershell
-git branch --show-current
-git add README.md docs/BRANCH-ROADMAP.md docs/TASK-LIST-REPORT.md docs/TASK-DETAIL-REPORT.md
+git add README.md docs/BRANCH-ROADMAP.md docs/TASK-CREATE-REPORT.md docs/TASK-PERSISTENCE-REPORT.md
 git add app/src/main app/src/androidTest
-git add app/src/test/java/com/example/uth_todo/HomeViewModelTest.kt app/src/test/java/com/example/uth_todo/TaskDetailTest.kt
+git add app/src/test/java/com/example/uth_todo/TaskPersistenceTest.kt
 git diff --cached --stat
 git diff --cached
-git commit -m "feat: implement task detail editing and deletion"
-git push -u origin feature/task-detail-api
+git commit -m "fix: persist tasks and serialize device storage access"
+git push -u origin feature/task-create-api
 ```
 
-Các lệnh trên để người dùng thực hiện; agent chưa chạy thao tác Git ghi. Không stage token, config Firebase, local.properties, cấu hình IDE/công cụ hoặc cache.
+Không stage token, Firebase config, local.properties, cấu hình IDE/công cụ hoặc cache. Các lệnh trên là hướng dẫn; agent chưa thực thi.
 
-## Sau mốc này
+## Tiếp theo
 
-Hoàn thiện Thêm công việc mới theo API POST sau khi Chi tiết được nghiệm thu và chốt commit. Sau đó đối chiếu các màn hình còn lại của đề, gồm nhắc theo giờ và Cài đặt; chưa tự coi toàn bộ app đã hoàn tất.
+Sau khi lưu thiết bị được người dùng nghiệm thu, tiếp tục Thông báo/nhắc theo giờ và Cài đặt còn lại. Đồng bộ task lên RTDB/giữa thiết bị là phạm vi chưa triển khai; không tự khẳng định đã có vì app đã dùng Firebase Auth/hồ sơ.
 
-Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật. Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
+Hợp đồng POST và tính lưu lâu dài của mock vẫn chưa xác minh. Giữ API mẫu để kiểm tra bài tập, không trộn kết quả mẫu vào dữ liệu cá nhân.

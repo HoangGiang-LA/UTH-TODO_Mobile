@@ -194,6 +194,7 @@ class HomeViewModelTest {
 }
 
 private class HomeFakeRepository : TaskRepository {
+    override suspend fun createTask(draft: TaskDraft): TodoTask = error("Not used by Home regression tests")
     override suspend fun loadTask(id: Long): TodoTask = tasks.single { it.id == id }
     override suspend fun updateTask(task: TodoTask) { tasks = tasks.map { if (it.id == task.id) task else it } }
     override suspend fun setSubtasks(id: Long, subtasks: List<TodoSubtask>) {

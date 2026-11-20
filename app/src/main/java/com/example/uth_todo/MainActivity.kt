@@ -13,7 +13,7 @@ import com.example.uth_todo.data.auth.FirebaseAuthRepository
 import com.example.uth_todo.data.firebase.FirebaseHomeConfigRepository
 import com.example.uth_todo.data.firebase.FirebaseProfileRepository
 import com.example.uth_todo.data.firebase.FirebaseTelemetry
-import com.example.uth_todo.data.tasks.MockTaskRepository
+import com.example.uth_todo.data.tasks.androidTaskRepository
 import com.example.uth_todo.ui.auth.AuthViewModel
 import com.example.uth_todo.navigation.UthTodoApp
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         val appFactory = viewModelFactory {
             initializer { OnboardingViewModel(OnboardingPreferences(applicationContext)) }
             initializer { AuthViewModel(FirebaseAuthRepository(applicationContext)) }
-            initializer { HomeViewModel(MockTaskRepository(BuildConfig.MOCK_API_TOKEN)) }
+            initializer { HomeViewModel(androidTaskRepository(applicationContext, BuildConfig.MOCK_API_TOKEN)) }
             initializer {
                 val telemetry = FirebaseTelemetry(applicationContext)
                 FirebaseServicesViewModel(FirebaseProfileRepository(applicationContext),
