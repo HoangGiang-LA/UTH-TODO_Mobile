@@ -140,4 +140,9 @@
     <string name="close_action">Đóng</string>
     <string name="select_action">Chọn</string>
     <string name="cancel_action">Hủy</string>
+    <string name="tasks_clear_search">Xóa nội dung tìm kiếm</string>
+    <string name="tasks_none">Bạn chưa có công việc nào.</string>
+    <string name="task_today">Hôm nay</string>
+    <string name="task_tomorrow">Ngày mai</string>
+    <string name="task_schedule">%1$s, %2$s</string>
 </resources>

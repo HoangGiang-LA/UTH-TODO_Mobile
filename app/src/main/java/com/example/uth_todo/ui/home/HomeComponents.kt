@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.example.uth_todo.R
 import com.example.uth_todo.model.*
 
-enum class HomeIcon { HOME, LIST, PLUS, BELL, SETTINGS, STUDY, LIFE, REFRESH, CALENDAR, SEARCH, CHEVRON }
+enum class HomeIcon { HOME, LIST, PLUS, BELL, SETTINGS, STUDY, LIFE, REFRESH, CALENDAR, SEARCH, CHEVRON, CLOSE }
 
 @Composable
 fun HomeGlyph(icon: HomeIcon, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
@@ -50,6 +50,7 @@ fun HomeGlyph(icon: HomeIcon, modifier: Modifier = Modifier, color: Color = Mate
                 }
                 HomeIcon.PLUS -> { lines(12f to 4f, 12f to 20f); lines(4f to 12f, 20f to 12f) }
                 HomeIcon.CHEVRON -> lines(9f to 6f, 15f to 12f, 9f to 18f)
+                HomeIcon.CLOSE -> { lines(6f to 6f, 18f to 18f); lines(6f to 18f, 18f to 6f) }
                 HomeIcon.BELL -> {
                     lines(4f to 17f, 6f to 14f, 6f to 9f, 8f to 5f, 12f to 4f, 16f to 5f, 18f to 9f, 18f to 14f, 20f to 17f, 4f to 17f)
                     drawArc(color, 0f, 180f, false, Offset(9f, 17f), Size(6f, 5f), style = stroke)
@@ -120,7 +121,7 @@ fun TaskProgressCard(summary: TaskDaySummary, hasLoaded: Boolean, isToday: Boole
 fun CategoryCard(category: TaskCategory, remaining: Int, hasLoaded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val study = category == TaskCategory.STUDY
     val tint = if (study) MaterialTheme.colorScheme.primary else Color(0xFF986230)
-    Card(onClick = onClick, enabled = hasLoaded, modifier = modifier.testTag(if (study) "category_study" else "category_life"),
+    Card(onClick = onClick, modifier = modifier.testTag(if (study) "category_study" else "category_life"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.background(tint.copy(alpha = 0.10f), RoundedCornerShape(8.dp)).padding(7.dp)) {
@@ -134,7 +135,8 @@ fun CategoryCard(category: TaskCategory, remaining: Int, hasLoaded: Boolean, onC
 }
 
 @Composable
-fun TaskRow(task: TodoTask, busyTaskId: Long?, onToggle: (Long) -> Unit, onOpen: (Long) -> Unit, prefix: String = "home", enabled: Boolean = true) {
+fun TaskRow(task: TodoTask, busyTaskId: Long?, onToggle: (Long) -> Unit, onOpen: (Long) -> Unit,
+    prefix: String = "home", enabled: Boolean = true, scheduleText: String? = null) {
     val toggleLabel = stringResource(if (task.done) R.string.task_mark_pending else R.string.task_mark_done, task.title)
     Card(onClick = { onOpen(task.id) }, modifier = Modifier.fillMaxWidth().testTag("${prefix}_task_${task.id}"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
@@ -157,7 +159,7 @@ fun TaskRow(task: TodoTask, busyTaskId: Long?, onToggle: (Long) -> Unit, onOpen:
                         color = if (task.category == TaskCategory.LIFE) Color(0xFF986230) else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.07f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
-                    Text(task.time ?: stringResource(R.string.task_no_time), style = MaterialTheme.typography.labelSmall,
+                    Text(scheduleText ?: task.time ?: stringResource(R.string.task_no_time), style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

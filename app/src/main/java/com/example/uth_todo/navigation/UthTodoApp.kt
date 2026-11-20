@@ -22,6 +22,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel as composeViewModel
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
@@ -32,6 +35,7 @@ import com.example.uth_todo.data.auth.GoogleCredentialClient
 import com.example.uth_todo.model.AuthError
 import com.example.uth_todo.model.AuthFailure
 import com.example.uth_todo.model.AuthSession
+import com.example.uth_todo.model.TaskFilter
 import com.example.uth_todo.ui.auth.AuthViewModel
 import com.example.uth_todo.ui.auth.EmailAuthScreen
 import com.example.uth_todo.ui.auth.messageResource
@@ -39,6 +43,8 @@ import com.example.uth_todo.ui.home.HomeScreen
 import com.example.uth_todo.ui.home.HomeViewModel
 import com.example.uth_todo.ui.home.HomeUiState
 import com.example.uth_todo.ui.home.messageResource
+import com.example.uth_todo.ui.tasklist.TaskListScreen
+import com.example.uth_todo.ui.tasklist.TaskListViewModel
 import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -109,7 +115,7 @@ fun UthTodoApp(
                 route == AppDestination.Onboarding.route && state.isCompleted ->
                     if (hasSession) AppDestination.Home else AppDestination.Welcome
                 hasSession && (route == AppDestination.Welcome.route || route == AppDestination.EmailAuth.route) -> AppDestination.Home
-                !hasSession && (route == AppDestination.Home.route || route == AppDestination.Profile.route) -> AppDestination.Welcome
+                !hasSession && AppDestination.requiresSession(route) -> AppDestination.Welcome
                 else -> null
             }
             if (target != null && route != null && route != target.route) {
@@ -177,16 +183,51 @@ fun UthTodoApp(
                 )
             }
             composable(AppDestination.Home.route) {
-                LaunchedEffect(homeViewModel) { homeViewModel?.onHomeOpened() }
+                LaunchedEffect(homeViewModel) { homeViewModel?.onTaskScreenOpened() }
                 val uid = (authState.session as? AuthSession.SignedIn)?.user?.uid
                 HomeScreen(authState.session,
                     onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
+                    onOpenList = { filter ->
+                        if (navController.currentDestination?.route == AppDestination.Home.route) {
+                            navController.navigate(AppDestination.TaskList.location(filter)) { launchSingleTop = true }
+                        }
+                    },
                     displayName = servicesState?.takeIf { uid != null && it.uid == uid }?.displayName,
                     announcement = servicesState?.homeConfig?.announcement,
                     state = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
                     onRefresh = { homeViewModel?.refresh() },
                     onToggle = { homeViewModel?.toggleDone(it) },
                     onSelectDate = { homeViewModel?.selectDate(it) })
+            }
+            composable(AppDestination.TaskList.route, arguments = listOf(
+                navArgument(AppDestination.TaskList.CATEGORY_ARGUMENT) {
+                    type = NavType.StringType
+                    defaultValue = TaskFilter.ALL.name
+                },
+            )) {
+                // The NavBackStackEntry's default factory supplies its SavedStateHandle,
+                // including the initial category argument and restored search state.
+                val listViewModel: TaskListViewModel = composeViewModel()
+                val listState by listViewModel.uiState.collectAsStateWithLifecycle()
+                LaunchedEffect(homeViewModel) { homeViewModel?.onTaskScreenOpened() }
+                TaskListScreen(
+                    tasksState = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
+                    listState = listState,
+                    onQuery = listViewModel::setQuery,
+                    onFilter = listViewModel::setFilter,
+                    onClearSearch = listViewModel::clearSearch,
+                    onRefresh = { homeViewModel?.refresh() },
+                    onToggle = { homeViewModel?.toggleDone(it) },
+                    onHome = {
+                        if (!navController.popBackStack(AppDestination.Home.route, inclusive = false)) {
+                            navController.navigate(AppDestination.Home.route) {
+                                popUpTo(navController.graph.id) { inclusive = false }
+                                launchSingleTop = true
+                            }
+                        }
+                    },
+                    onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
+                )
             }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(authState.session, authState.isBusy,
