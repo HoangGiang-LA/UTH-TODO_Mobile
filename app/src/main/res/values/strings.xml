@@ -76,4 +76,25 @@
     <string name="profile_unverified">Chưa xác minh</string>
     <string name="profile_not_provided">Chưa cung cấp</string>
     <string name="profile_sign_out">Đăng xuất</string>
+    <string name="profile_sync_title">Tên của bạn</string>
+    <string name="profile_sync_description">Lưu tên hiển thị để dùng trên các thiết bị khi đăng nhập cùng tài khoản.</string>
+    <string name="profile_name_limit">Từ 1 đến 60 ký tự.</string>
+    <string name="profile_name_invalid">Vui lòng nhập tên từ 1 đến 60 ký tự trên một dòng.</string>
+    <string name="profile_save_name">Lưu tên hiển thị</string>
+    <string name="profile_sync_loading">Đang tải hồ sơ…</string>
+    <string name="profile_sync_saved">Đã lưu tên hiển thị.</string>
+    <string name="profile_sync_unavailable">Đồng bộ hồ sơ chưa sẵn sàng. Bạn vẫn có thể sử dụng ứng dụng.</string>
+    <string name="profile_sync_denied">Chưa có quyền truy cập hồ sơ. Vui lòng thử lại hoặc đăng nhập lại.</string>
+    <string name="profile_sync_timeout">Chưa xác nhận được đồng bộ. Hãy kiểm tra mạng, thử tải lại để đối chiếu tên đã lưu.</string>
+    <string name="profile_sync_failed">Chưa đồng bộ được hồ sơ. Vui lòng thử lại.</string>
+    <string name="notifications_title">Thông báo</string>
+    <string name="notifications_description">Cho phép UTH Todo gửi thông báo chung của ứng dụng. Bạn có thể tắt bất cứ lúc nào trong Cài đặt.</string>
+    <string name="notifications_enable">Bật thông báo</string>
+    <string name="notifications_enabled">Đã bật thông báo chung của UTH Todo.</string>
+    <string name="notifications_connecting">Đang kết nối thông báo…</string>
+    <string name="notifications_failed">Chưa đăng ký nhận được thông báo. Hãy kiểm tra mạng và thử lại.</string>
+    <string name="notifications_unavailable">Thông báo hiện chưa sẵn sàng.</string>
+    <string name="notifications_settings">Cài đặt thông báo</string>
+    <string name="notifications_channel">Thông báo UTH Todo</string>
+    <string name="notifications_channel_description">Thông báo chung của ứng dụng UTH Todo.</string>
 </resources>

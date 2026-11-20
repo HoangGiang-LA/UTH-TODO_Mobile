@@ -28,9 +28,9 @@ import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.WelcomeArtwork
 
 @Composable
-fun HomeScreen(session: AuthSession, onProfile: () -> Unit) {
+fun HomeScreen(session: AuthSession, onProfile: () -> Unit, displayName: String? = null, announcement: String? = null) {
     val user = (session as? AuthSession.SignedIn)?.user
-    val name = user?.displayName?.takeIf { it.isNotBlank() }
+    val name = displayName?.takeIf { it.isNotBlank() } ?: user?.displayName?.takeIf { it.isNotBlank() }
         ?: user?.email?.substringBefore('@') ?: stringResource(R.string.guest_name)
     Box(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
         Column(
@@ -41,6 +41,11 @@ fun HomeScreen(session: AuthSession, onProfile: () -> Unit) {
             Text(stringResource(R.string.home_title), style = MaterialTheme.typography.bodyMedium)
             Text(stringResource(R.string.home_greeting, name), style = MaterialTheme.typography.headlineMedium,
                 modifier = Modifier.testTag("home_title"))
+            if (!announcement.isNullOrBlank()) {
+                Card(Modifier.fillMaxWidth().testTag("home_announcement")) {
+                    Text(announcement, modifier = Modifier.padding(20.dp))
+                }
+            }
             WelcomeArtwork()
             Text(stringResource(R.string.home_intro), style = MaterialTheme.typography.titleLarge)
             Text(stringResource(R.string.home_body), color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -37,6 +37,7 @@ import com.example.uth_todo.ui.auth.EmailAuthScreen
 import com.example.uth_todo.ui.auth.messageResource
 import com.example.uth_todo.ui.home.HomeScreen
 import com.example.uth_todo.ui.profile.ProfileScreen
+import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
 import com.example.uth_todo.ui.onboarding.PreferencesError
@@ -48,9 +49,11 @@ fun UthTodoApp(
     viewModel: OnboardingViewModel,
     authViewModel: AuthViewModel,
     navController: NavHostController = rememberNavController(),
+    servicesViewModel: FirebaseServicesViewModel? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
+    val servicesState = servicesViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val snackbar = remember { SnackbarHostState() }
@@ -63,6 +66,13 @@ fun UthTodoApp(
     val authNotice = authState.notice
     val authNoticeMessage = authNotice?.let { stringResource(it.messageResource()) }
     val splashVisible = route == null || route == AppDestination.Splash.route
+
+    LaunchedEffect(authState.session, servicesViewModel) {
+        servicesViewModel?.bindSession(authState.session)
+    }
+    LaunchedEffect(route, servicesViewModel) {
+        route?.let { servicesViewModel?.screenOpened(it) }
+    }
 
     SideEffect {
         (context as? ComponentActivity)?.enableEdgeToEdge(
@@ -153,13 +163,22 @@ fun UthTodoApp(
                 )
             }
             composable(AppDestination.Home.route) {
-                HomeScreen(authState.session) {
-                    navController.navigate(AppDestination.Profile.route) { launchSingleTop = true }
-                }
+                val uid = (authState.session as? AuthSession.SignedIn)?.user?.uid
+                HomeScreen(authState.session,
+                    onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
+                    displayName = servicesState?.takeIf { uid != null && it.uid == uid }?.displayName,
+                    announcement = servicesState?.homeConfig?.announcement)
             }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(authState.session, authState.isBusy,
-                    onBack = { navController.popBackStack() }, onSignOut = authViewModel::signOut)
+                    onBack = { navController.popBackStack() }, onSignOut = authViewModel::signOut,
+                    servicesState = servicesState?.takeIf {
+                        it.uid == (authState.session as? AuthSession.SignedIn)?.user?.uid
+                    },
+                    onSaveName = { servicesViewModel?.saveDisplayName(it) },
+                    onRetryProfile = { servicesViewModel?.retryProfile() },
+                    onNameEdited = { servicesViewModel?.dismissSaveResult() },
+                    showNotifications = servicesViewModel != null)
             }
         }
     }
