@@ -29,6 +29,7 @@ fun HomeScreen(
     session: AuthSession,
     onProfile: () -> Unit,
     onOpenList: (TaskFilter) -> Unit,
+    onOpenTask: (Long) -> Unit = {},
     displayName: String? = null,
     announcement: String? = null,
     state: HomeUiState = HomeUiState(error = TaskApiError.NOT_CONFIGURED),
@@ -42,7 +43,6 @@ fun HomeScreen(
     val initials = name.trim().split(Regex("\\s+")).take(2).mapNotNull { it.firstOrNull() }.joinToString("").uppercase()
     val summary = remember(state.tasks, state.selectedDate) { state.tasks.summary(state.selectedDate) }
     val dayTasks = remember(state.tasks, state.selectedDate) { state.tasks.forDate(state.selectedDate) }
-    var previewId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showDate by rememberSaveable { mutableStateOf(false) }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
     var showCreateNotice by rememberSaveable { mutableStateOf(false) }
@@ -102,7 +102,7 @@ fun HomeScreen(
                     modifier = Modifier.testTag("tasks_empty").padding(vertical = 18.dp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 dayTasks.take(8).forEach { TaskRow(it, state.changingTaskId, onToggle,
-                    onOpen = { id -> previewId = id }, enabled = !state.isLoading) }
+                    onOpen = onOpenTask, enabled = !state.isLoading) }
                 if (dayTasks.size > 8) Text(stringResource(R.string.home_preview_count, 8, dayTasks.size),
                     style = MaterialTheme.typography.bodyMedium)
             }
@@ -113,7 +113,6 @@ fun HomeScreen(
         TaskBottomBar(TaskTab.HOME, onHome = {}, onList = { onOpenList(TaskFilter.ALL) },
             onNotifications = { showNotifications = true }, onProfile = onProfile, onAdd = { showCreateNotice = true })
     }
-    state.tasks.firstOrNull { it.id == previewId }?.let { TaskPreviewDialog(it, onDismiss = { previewId = null }) }
     if (showDate) {
         val picker = rememberDatePickerState(initialSelectedDateMillis = TaskDates.toUtcMillis(state.selectedDate))
         DatePickerDialog(onDismissRequest = { showDate = false }, confirmButton = {

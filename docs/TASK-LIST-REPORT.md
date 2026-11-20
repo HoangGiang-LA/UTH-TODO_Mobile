@@ -2,6 +2,8 @@
 
 Ngày: 20/11/2026. Base: BTVN 04, commit `1fbfbf0`. Nhánh dự kiến: `feature/task-list-api`.
 
+**Nghiệm thu sau triển khai:** người dùng xác nhận đã test và push hoàn tất; commit `4d0d14e` trên `feature/task-list-api`. Nội dung bên dưới ghi lại phạm vi/kết quả tại mốc Danh sách. Flow Chi tiết kế tiếp được ghi riêng trong [TASK-DETAIL-REPORT.md](TASK-DETAIL-REPORT.md).
+
 ## Phạm vi
 
 Tách danh sách xem nhanh của Home thành màn hình “Danh sách” riêng, đối chiếu ảnh trong `Khởi tạo App Mobile(Task).docx`. Giữ repository, API, Firebase và giao diện Home hiện có.

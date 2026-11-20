@@ -44,10 +44,10 @@ fun TaskListScreen(
     onToggle: (Long) -> Unit,
     onHome: () -> Unit,
     onProfile: () -> Unit,
+    onOpenTask: (Long) -> Unit = {},
 ) {
     val content = remember(tasksState.tasks, listState) { listState.content(tasksState.tasks) }
     val scroll = rememberLazyListState()
-    var previewId by rememberSaveable { mutableStateOf<Long?>(null) }
     var showNotifications by rememberSaveable { mutableStateOf(false) }
     var showCreateNotice by rememberSaveable { mutableStateOf(false) }
     val refreshLabel = stringResource(R.string.tasks_refresh)
@@ -127,14 +127,14 @@ fun TaskListScreen(
                     Text(stringResource(R.string.tasks_pending), style = MaterialTheme.typography.labelLarge)
                 }
                 items(content.pending, key = { it.id }) { task ->
-                    TaskRow(task, tasksState.changingTaskId, onToggle, onOpen = { previewId = it }, prefix = "list",
+                    TaskRow(task, tasksState.changingTaskId, onToggle, onOpen = { focus.clearFocus(); onOpenTask(it) }, prefix = "list",
                         enabled = !tasksState.isLoading, scheduleText = taskSchedule(task, today))
                 }
                 if (content.completed.isNotEmpty()) item(key = "completed_header") {
                     Text(stringResource(R.string.tasks_completed), style = MaterialTheme.typography.labelLarge)
                 }
                 items(content.completed, key = { it.id }) { task ->
-                    TaskRow(task, tasksState.changingTaskId, onToggle, onOpen = { previewId = it }, prefix = "list",
+                    TaskRow(task, tasksState.changingTaskId, onToggle, onOpen = { focus.clearFocus(); onOpenTask(it) }, prefix = "list",
                         enabled = !tasksState.isLoading, scheduleText = taskSchedule(task, today))
                 }
             } else if (tasksState.error == null) item(key = "initial_loading") {
@@ -147,9 +147,6 @@ fun TaskListScreen(
             onNotifications = { focus.clearFocus(); showNotifications = true },
             onProfile = { focus.clearFocus(); onProfile() },
             onAdd = { focus.clearFocus(); showCreateNotice = true })
-    }
-    tasksState.tasks.firstOrNull { it.id == previewId }?.let {
-        TaskPreviewDialog(it, onDismiss = { previewId = null })
     }
     if (showNotifications) ModalBottomSheet(onDismissRequest = { showNotifications = false }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) { NotificationPreferenceCard() }

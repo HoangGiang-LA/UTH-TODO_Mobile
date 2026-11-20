@@ -8,6 +8,8 @@ import com.example.uth_todo.model.AuthSession
 import com.example.uth_todo.model.TaskApiError
 import com.example.uth_todo.model.TaskApiFailure
 import com.example.uth_todo.model.TodoTask
+import com.example.uth_todo.ui.taskdetail.TaskDetailUiState
+import com.example.uth_todo.ui.taskdetail.TaskDraft
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -25,6 +27,7 @@ data class HomeUiState(
     val changingTaskId: Long? = null,
     val notice: TaskApiError? = null,
     val selectedDate: String = TaskDates.today(),
+    val detail: TaskDetailUiState = TaskDetailUiState(),
 )
 
 class HomeViewModel(private val repository: TaskRepository, private val today: () -> String = TaskDates::today) : ViewModel() {
@@ -32,8 +35,12 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
     val uiState = mutableState.asStateFlow()
     private var sessionKey: String? = null
     private var generation = 0
+    private var listGeneration = 0
     private var loading: Job? = null
     private var changing: Job? = null
+    private var detailLoading: Job? = null
+    private var detailGeneration = 0
+    private var skipNextScreenRefresh = false
 
     fun bindSession(session: AuthSession) {
         val key = when (session) {
@@ -43,36 +50,56 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         }
         if (key == sessionKey) return
         generation++
+        listGeneration++
         loading?.cancel()
         changing?.cancel()
+        detailLoading?.cancel()
+        detailGeneration++
+        skipNextScreenRefresh = false
         sessionKey = key
         mutableState.value = HomeUiState(selectedDate = today())
         if (key != null) refresh()
     }
 
-    fun onTaskScreenOpened() { if (sessionKey != null) refresh() }
+    fun onTaskScreenOpened() {
+        if (mutableState.value.detail.isLoading) {
+            detailGeneration++
+            detailLoading?.cancel()
+            mutableState.update { it.copy(detail = it.detail.copy(isLoading = false)) }
+        }
+        if (skipNextScreenRefresh) {
+            skipNextScreenRefresh = false
+            if (mutableState.value.hasLoaded) return
+        }
+        if (sessionKey != null) refresh()
+    }
 
     fun refresh() {
         val state = mutableState.value
-        if (sessionKey == null || state.isLoading || state.changingTaskId != null) return
+        if (sessionKey == null || state.isLoading || state.changingTaskId != null || state.detail.isLoading) return
         if (!repository.isConfigured) {
             mutableState.update { it.copy(error = TaskApiError.NOT_CONFIGURED) }
             return
         }
         val current = generation
+        val requestGeneration = ++listGeneration
         mutableState.update { it.copy(isLoading = true, error = null, notice = null) }
         loading = viewModelScope.launch {
             try {
                 val tasks = withTimeout(25_000) { repository.loadTasks() }
-                if (current == generation) mutableState.update { it.copy(tasks = tasks, hasLoaded = true) }
+                if (current == generation && requestGeneration == listGeneration)
+                    mutableState.update { it.copy(tasks = tasks, hasLoaded = true) }
             } catch (_: TimeoutCancellationException) {
-                if (current == generation) mutableState.update { it.copy(error = TaskApiError.TIMEOUT) }
+                if (current == generation && requestGeneration == listGeneration)
+                    mutableState.update { it.copy(error = TaskApiError.TIMEOUT) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                if (current == generation) mutableState.update { it.copy(error = failure.reason()) }
+                if (current == generation && requestGeneration == listGeneration)
+                    mutableState.update { it.copy(error = failure.reason()) }
             } finally {
-                if (current == generation) mutableState.update { it.copy(isLoading = false) }
+                if (current == generation && requestGeneration == listGeneration)
+                    mutableState.update { it.copy(isLoading = false) }
             }
         }
     }
@@ -105,6 +132,146 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
     fun selectDate(value: String) {
         if (TaskDates.isValidDate(value)) mutableState.update { it.copy(selectedDate = value) }
     }
+
+    fun openTask(id: Long, entryKey: String) {
+        if (sessionKey == null || mutableState.value.changingTaskId != null) return
+        val detail = mutableState.value.detail
+        if (detail.entryKey == entryKey && detail.id == id) return
+        // A restored detail route may arrive while the initial list GET is pending.
+        // Its older snapshot must not overwrite the freshly fetched detail.
+        listGeneration++
+        loading?.cancel()
+        detailLoading?.cancel()
+        detailGeneration++
+        mutableState.update { it.copy(isLoading = false, detail = TaskDetailUiState(entryKey = entryKey, id = id)) }
+        retryTaskDetail()
+    }
+
+    fun retryTaskDetail() {
+        val detail = mutableState.value.detail
+        val id = detail.id ?: return
+        if (sessionKey == null || detail.isLoading || detail.isSaving || detail.isEditing) return
+        if (id <= 0 || !repository.isConfigured) {
+            mutableState.update { it.copy(detail = it.detail.copy(error =
+                if (id <= 0) TaskApiError.NOT_FOUND else TaskApiError.NOT_CONFIGURED)) }
+            return
+        }
+        val current = generation
+        val requestGeneration = ++detailGeneration
+        mutableState.update { it.copy(detail = it.detail.copy(isLoading = true, error = null, mutationError = null, saved = false)) }
+        detailLoading = viewModelScope.launch {
+            try {
+                val task = withTimeout(25_000) { repository.loadTask(id) }
+                if (task.id != id) throw TaskApiFailure(TaskApiError.INVALID_RESPONSE)
+                if (current == generation && requestGeneration == detailGeneration) {
+                    skipNextScreenRefresh = true
+                    mutableState.update { it.copy(tasks = it.tasks.upsert(task),
+                        detail = it.detail.copy(task = task, isLoading = false)) }
+                }
+            } catch (_: TimeoutCancellationException) {
+                if (current == generation && requestGeneration == detailGeneration)
+                    mutableState.update { it.copy(detail = it.detail.copy(error = TaskApiError.TIMEOUT)) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (current == generation && requestGeneration == detailGeneration)
+                    mutableState.update { it.copy(detail = it.detail.copy(error = failure.reason())) }
+            } finally {
+                if (current == generation && requestGeneration == detailGeneration)
+                    mutableState.update { it.copy(detail = it.detail.copy(isLoading = false)) }
+            }
+        }
+    }
+
+    fun beginTaskEdit() {
+        val detail = mutableState.value.detail
+        val task = detail.task ?: return
+        if (detail.isLoading || detail.isSaving || detail.error != null) return
+        mutableState.update { it.copy(detail = detail.copy(draft = TaskDraft.from(task),
+            validation = null, mutationError = null, saved = false)) }
+    }
+
+    fun changeTaskDraft(draft: TaskDraft) {
+        if (mutableState.value.detail.isEditing && !mutableState.value.detail.isSaving)
+            mutableState.update { it.copy(detail = it.detail.copy(draft = draft, validation = null, mutationError = null)) }
+    }
+
+    fun cancelTaskEdit() {
+        if (!mutableState.value.detail.isSaving)
+            mutableState.update { it.copy(detail = it.detail.copy(draft = null, validation = null, mutationError = null)) }
+    }
+
+    fun saveTaskEdit() {
+        val detail = mutableState.value.detail
+        val draft = detail.draft ?: return
+        val task = detail.task ?: return
+        val error = draft.validationError()
+        if (error != null) {
+            mutableState.update { it.copy(detail = it.detail.copy(validation = error)) }
+            return
+        }
+        val updated = draft.applyTo(task)
+        mutateDetail(updated, finishEdit = true) { repository.updateTask(updated) }
+    }
+
+    fun toggleDetailDone() {
+        val task = mutableState.value.detail.task ?: return
+        val updated = task.copy(done = !task.done)
+        mutateDetail(updated) { repository.setDone(task.id, updated.done) }
+    }
+
+    fun toggleSubtask(index: Int) {
+        val task = mutableState.value.detail.task ?: return
+        val subtask = task.subtasks.getOrNull(index) ?: return
+        val subtasks = task.subtasks.mapIndexed { i, value -> if (i == index) subtask.copy(done = !subtask.done) else value }
+        mutateDetail(task.copy(subtasks = subtasks)) { repository.setSubtasks(task.id, subtasks) }
+    }
+
+    fun deleteTask() {
+        val task = mutableState.value.detail.task ?: return
+        if (mutableState.value.detail.isEditing) return
+        mutateDetail(task, deleted = true) { repository.deleteTask(task.id) }
+    }
+
+    private fun mutateDetail(updated: TodoTask, finishEdit: Boolean = false, deleted: Boolean = false,
+        command: suspend () -> Unit) {
+        val state = mutableState.value
+        val detail = state.detail
+        if (sessionKey == null || state.isLoading || state.changingTaskId != null || detail.isLoading ||
+            detail.deleted || detail.error != null || (detail.isEditing && !finishEdit)) return
+        val current = generation
+        val entryKey = detail.entryKey
+        mutableState.update { it.copy(changingTaskId = updated.id,
+            detail = it.detail.copy(isSaving = true, mutationError = null, saved = false)) }
+        changing = viewModelScope.launch {
+            try {
+                withTimeout(25_000) { command() }
+                if (current == generation) {
+                    skipNextScreenRefresh = true
+                    mutableState.update { value ->
+                        value.copy(tasks = if (deleted) value.tasks.filterNot { it.id == updated.id } else value.tasks.upsert(updated),
+                            detail = if (value.detail.entryKey == entryKey) value.detail.copy(task = updated,
+                                draft = if (finishEdit) null else value.detail.draft, validation = null,
+                                deleted = deleted, saved = finishEdit) else value.detail)
+                    }
+                }
+            } catch (_: TimeoutCancellationException) {
+                if (current == generation && mutableState.value.detail.entryKey == entryKey)
+                    mutableState.update { it.copy(detail = it.detail.copy(mutationError = TaskApiError.TIMEOUT)) }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (current == generation && mutableState.value.detail.entryKey == entryKey)
+                    mutableState.update { it.copy(detail = it.detail.copy(mutationError = failure.reason())) }
+            } finally {
+                if (current == generation) mutableState.update { it.copy(changingTaskId = null,
+                    detail = if (it.detail.entryKey == entryKey) it.detail.copy(isSaving = false) else it.detail) }
+            }
+        }
+    }
+
+    private fun List<TodoTask>.upsert(task: TodoTask): List<TodoTask> =
+        if (any { it.id == task.id }) map { if (it.id == task.id) task else it } else this + task
 
     fun dismissNotice(expected: TaskApiError) {
         mutableState.update { if (it.notice == expected) it.copy(notice = null) else it }

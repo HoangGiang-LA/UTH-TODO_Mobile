@@ -194,6 +194,12 @@ class HomeViewModelTest {
 }
 
 private class HomeFakeRepository : TaskRepository {
+    override suspend fun loadTask(id: Long): TodoTask = tasks.single { it.id == id }
+    override suspend fun updateTask(task: TodoTask) { tasks = tasks.map { if (it.id == task.id) task else it } }
+    override suspend fun setSubtasks(id: Long, subtasks: List<TodoSubtask>) {
+        tasks = tasks.map { if (it.id == id) it.copy(subtasks = subtasks) else it }
+    }
+    override suspend fun deleteTask(id: Long) { tasks = tasks.filterNot { it.id == id } }
     override var isConfigured = true
     var tasks = TaskJsonDecoder().decodeList(taskFixture())
     var loadCount = 0

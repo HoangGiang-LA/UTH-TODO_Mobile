@@ -27,6 +27,16 @@ class TaskJsonDecoder {
         }
     }
 
+    fun decodeDetail(json: String): TodoTask {
+        try {
+            val root = gson.fromJson(json, JsonElement::class.java)
+            require(root != null && root.isJsonObject)
+            return decodeTask(root.asJsonObject)
+        } catch (_: Exception) {
+            throw TaskApiFailure(TaskApiError.INVALID_RESPONSE)
+        }
+    }
+
     private fun decodeTask(value: JsonObject): TodoTask {
         val idValue = value.get("id")
         require(idValue != null && idValue.isJsonPrimitive && idValue.asJsonPrimitive.isNumber)

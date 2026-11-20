@@ -5,63 +5,53 @@ Cập nhật 20/11/2026. Mỗi mốc được kiểm thử và commit riêng. Ng
 | Mốc | Nhánh | Trạng thái |
 |---|---|---|
 | BTVN 01 | `feature/btvn01-navigation-oop` | Commit `c4a0623`, người dùng đã thử |
-| BTVN 02 | `feature/btvn02-firebase-auth` | Commit `4f3002e`, người dùng xác nhận Google/email chạy được |
+| BTVN 02 | `feature/btvn02-firebase-auth` | Commit `4f3002e`, người dùng xác nhận chạy được |
 | BTVN 03 | `feature/btvn03-firebase-services` | Commit `028f378`, người dùng đã build/tự kiểm thử thành công |
 | BTVN 04 | `feature/btvn04-home-api` | Commit `1fbfbf0`, người dùng đã build/chạy thử thành công |
-| Flow danh sách | `feature/task-list-api` dự kiến | Màn hình riêng và điều hướng đã triển khai; 57 unit test riêng đạt, chờ build Gradle và thử thiết bị |
-| Flow chi tiết | `feature/task-detail-api` dự kiến | Tiếp theo: GET theo ID, sửa/xóa theo hợp đồng API; hiện chỉ có hộp xem nhanh dữ liệu list |
+| Flow danh sách | `feature/task-list-api` | Commit `4d0d14e`, người dùng xác nhận đã test và push hoàn tất |
+| Flow chi tiết | `feature/task-detail-api` dự kiến | Đã triển khai GET theo ID, sửa, việc nhỏ, hoàn thành và xóa; chờ build/chạy thử thiết bị |
+| Thêm công việc | Chưa tạo | Mốc tiếp theo; cần đối chiếu POST và màn hình theo đề |
 | BTVN 05 | Chưa đặt | Đề chưa đủ mô tả, không tự gán tính năng |
-
-Flow danh sách đối chiếu ảnh màn hình “Danh sách” trong file đề cục bộ. Gọi GET/PATCH từ repository BTVN 04; tìm kiếm/lọc phía ứng dụng. Không thêm endpoint chưa có trong đề.
 
 ## Nhánh hiện tại
 
-Base là BTVN 04 ở `1fbfbf0`. Khi triển khai, nhánh vẫn là `feature/btvn04-home-api`; thay đổi danh sách chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
+Base là Danh sách ở `4d0d14e`. Khi triển khai Chi tiết, nhánh vẫn là `feature/task-list-api`; thay đổi mới chưa stage/commit. Agent không tạo/chuyển nhánh, stage, commit, push hoặc merge.
 
-Người dùng tự chạy trước khi chốt mốc:
+Người dùng tự chạy:
 
 ```powershell
 git status
-git branch --show-current
-git switch -c feature/task-list-api
-```
-
-Nhánh mới kế thừa Home đã nghiệm thu và mang theo thay đổi working tree. Không reset/clean hoặc tạo lại nếu nhánh này đã được tạo sau khi tài liệu được viết.
-
-## Build và nghiệm thu
-
-Token mock nằm trong `api.local.properties` bị Git bỏ qua. Máy khác cần tạo file từ template hoặc cung cấp biến `UTH_MOCK_API_TOKEN`. Giữ cấu hình Firebase của máy đang hoạt động.
-
-```powershell
+git switch -c feature/task-detail-api
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
-Sau đó Run và thực hiện checklist trong [TASK-LIST-REPORT.md](TASK-LIST-REPORT.md): mở từ mọi điểm vào Home, tìm kiếm/lọc, hoàn thành công việc, kiểm tra Home đồng bộ, Back/Hồ sơ và phiên đăng nhập.
+Nhánh mới kế thừa Danh sách đã nghiệm thu và mang theo thay đổi working tree. Không tạo lại nếu đã tạo nhánh này sau khi tài liệu được viết.
 
-Trong môi trường agent, wrapper bị chặn quyền mở file khóa trước khi chạy task. 57 test JUnit riêng, 49 file Kotlin/Compose, mã Android test và resources đã kiểm tra đạt; không thay thế kết quả Gradle hoặc thử trên thiết bị.
+## Nghiệm thu Chi tiết
 
-## Commit/push sau khi chạy đạt
+Xem [TASK-DETAIL-REPORT.md](TASK-DETAIL-REPORT.md). Run rồi thử mở từ Home/Danh sách, sửa/lưu, thêm/sửa/bỏ việc nhỏ, hoàn thành, xác nhận xóa, Back giữ từ khóa/bộ lọc, tải lỗi và phiên không còn hợp lệ.
 
-Các lệnh dưới đây để người dùng thực hiện sau khi xem diff và nghiệm thu:
+Token/config cục bộ đang hoạt động được giữ nguyên. Máy khác tạo `api.local.properties` từ template hoặc dùng biến `UTH_MOCK_API_TOKEN`.
+
+Trong môi trường agent: 74 JUnit test riêng đạt, 50 source Kotlin/Compose và mã 23 Android test biên dịch đạt, resources đạt. Wrapper bị chặn mở file khóa, chưa xác nhận APK/lint. Android test và live API chưa chạy; cần kiểm tra payload PATCH/DELETE với mock thật.
+
+## Stage, commit và push sau khi chạy đạt
 
 ```powershell
 git branch --show-current
-git diff --stat
-git diff
-git ls-files --others --exclude-standard
-git add README.md docs/BRANCH-ROADMAP.md docs/TASK-LIST-REPORT.md
-git add app/src/main app/src/androidTest app/src/test/java/com/example/uth_todo/TaskListViewModelTest.kt
+git add README.md docs/BRANCH-ROADMAP.md docs/TASK-LIST-REPORT.md docs/TASK-DETAIL-REPORT.md
+git add app/src/main app/src/androidTest
+git add app/src/test/java/com/example/uth_todo/HomeViewModelTest.kt app/src/test/java/com/example/uth_todo/TaskDetailTest.kt
 git diff --cached --stat
 git diff --cached
-git commit -m "feat: implement task list screen and navigation"
-git push -u origin feature/task-list-api
+git commit -m "feat: implement task detail editing and deletion"
+git push -u origin feature/task-detail-api
 ```
 
-Không stage cấu hình IDE/công cụ, config Firebase, token cục bộ hoặc cache. Đây là hướng dẫn, agent chưa thực thi các thao tác ghi Git.
+Các lệnh trên để người dùng thực hiện; agent chưa chạy thao tác Git ghi. Không stage token, config Firebase, local.properties, cấu hình IDE/công cụ hoặc cache.
 
-## Mốc sau
+## Sau mốc này
 
-- Hoàn thiện flow chi tiết sau khi danh sách được người dùng build/chạy đạt và chốt commit.
-- Dùng GET theo ID và xác nhận API khi sửa/xóa; không báo lưu/xóa thành công trước ACK.
-- Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật. Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
-- Phần thêm mới và CRUD đầy đủ chỉ triển khai theo đề/hợp đồng API được xác minh.
+Hoàn thiện Thêm công việc mới theo API POST sau khi Chi tiết được nghiệm thu và chốt commit. Sau đó đối chiếu các màn hình còn lại của đề, gồm nhắc theo giờ và Cài đặt; chưa tự coi toàn bộ app đã hoàn tất.
+
+Nếu main đã merge mốc trước, người dùng tạo nhánh mới từ main đã cập nhật. Nếu chưa merge, nhánh tiếp theo kế thừa commit mốc trước đã nghiệm thu và chọn base PR phù hợp.
