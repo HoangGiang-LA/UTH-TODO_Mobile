@@ -1,5 +1,7 @@
 package com.example.uth_todo.ui.welcome
 
+import androidx.activity.compose.BackHandler
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -34,7 +36,8 @@ import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.WelcomeArtwork
 
 @Composable
-fun WelcomeScreen(onGoogleClick: () -> Unit, onGuestClick: () -> Unit) {
+fun WelcomeScreen(onGoogleClick: () -> Unit, onGuestClick: () -> Unit, onEmailClick: () -> Unit, isBusy: Boolean) {
+    BackHandler(enabled = isBusy) { }
     BoxWithConstraints(Modifier.fillMaxSize().safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
         val fontScale = LocalDensity.current.fontScale
         val compact = maxHeight < 540.dp || fontScale >= 1.5f
@@ -56,11 +59,15 @@ fun WelcomeScreen(onGoogleClick: () -> Unit, onGuestClick: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
             }
             PrimaryButton(
-                stringResource(R.string.continue_google), onGoogleClick,
+                stringResource(if (isBusy) R.string.auth_processing else R.string.continue_google), onGoogleClick,
                 modifier = Modifier.padding(top = 16.dp, bottom = 10.dp),
+                enabled = !isBusy,
                 leadingIcon = { Image(painterResource(R.drawable.ic_google), null, Modifier.size(24.dp)) },
             )
-            TextButton(onClick = onGuestClick, modifier = Modifier.fillMaxWidth().testTag("guest_button")) {
+            TextButton(onClick = onEmailClick, enabled = !isBusy, modifier = Modifier.fillMaxWidth().testTag("email_button")) {
+                Text(stringResource(R.string.auth_email_option), textAlign = TextAlign.Center)
+            }
+            TextButton(onClick = onGuestClick, enabled = !isBusy, modifier = Modifier.fillMaxWidth().testTag("guest_button")) {
                 Text(stringResource(R.string.try_without_account), textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(24.dp))

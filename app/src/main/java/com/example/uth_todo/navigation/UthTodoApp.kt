@@ -3,6 +3,7 @@ package com.example.uth_todo.navigation
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -14,7 +15,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -28,26 +28,40 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.uth_todo.R
+import com.example.uth_todo.data.auth.GoogleCredentialClient
+import com.example.uth_todo.model.AuthError
+import com.example.uth_todo.model.AuthFailure
+import com.example.uth_todo.model.AuthSession
+import com.example.uth_todo.ui.auth.AuthViewModel
+import com.example.uth_todo.ui.auth.EmailAuthScreen
+import com.example.uth_todo.ui.auth.messageResource
+import com.example.uth_todo.ui.home.HomeScreen
+import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
 import com.example.uth_todo.ui.onboarding.PreferencesError
 import com.example.uth_todo.ui.splash.SplashScreen
 import com.example.uth_todo.ui.welcome.WelcomeScreen
-import kotlinx.coroutines.launch
 
 @Composable
-fun UthTodoApp(viewModel: OnboardingViewModel, navController: NavHostController = rememberNavController()) {
+fun UthTodoApp(
+    viewModel: OnboardingViewModel,
+    authViewModel: AuthViewModel,
+    navController: NavHostController = rememberNavController(),
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val googleMessage = stringResource(R.string.google_coming_soon)
-    val guestMessage = stringResource(R.string.guest_coming_soon)
+    val activity = LocalActivity.current as? ComponentActivity
+    val googleClient = remember { GoogleCredentialClient() }
     val readErrorMessage = stringResource(R.string.preferences_read_error)
     val saveErrorMessage = stringResource(R.string.preferences_save_error)
     val retryLabel = stringResource(R.string.retry)
+    val authNotice = authState.notice
+    val authNoticeMessage = authNotice?.let { stringResource(it.messageResource()) }
     val splashVisible = route == null || route == AppDestination.Splash.route
 
     SideEffect {
@@ -61,11 +75,17 @@ fun UthTodoApp(viewModel: OnboardingViewModel, navController: NavHostController 
 
     // Wait for DataStore before choosing a destination. Remove the previous flow
     // from the stack so Back never reveals Splash or completed onboarding.
-    LaunchedEffect(state.isLoading, state.isCompleted, route) {
-        if (!state.isLoading) {
+    LaunchedEffect(state.isLoading, state.isCompleted, authState.session, authState.isBusy, route) {
+        if (!state.isLoading && authState.session != AuthSession.Loading && !authState.isBusy) {
+            val hasSession = authState.session is AuthSession.SignedIn || authState.session == AuthSession.Guest
             val target = when {
-                state.isCompleted -> AppDestination.Welcome
-                route == AppDestination.Splash.route -> AppDestination.Onboarding
+                route == AppDestination.Splash.route && !state.isCompleted -> AppDestination.Onboarding
+                route == AppDestination.Splash.route && hasSession -> AppDestination.Home
+                route == AppDestination.Splash.route -> AppDestination.Welcome
+                route == AppDestination.Onboarding.route && state.isCompleted ->
+                    if (hasSession) AppDestination.Home else AppDestination.Welcome
+                hasSession && (route == AppDestination.Welcome.route || route == AppDestination.EmailAuth.route) -> AppDestination.Home
+                !hasSession && (route == AppDestination.Home.route || route == AppDestination.Profile.route) -> AppDestination.Welcome
                 else -> null
             }
             if (target != null && route != null && route != target.route) {
@@ -75,6 +95,14 @@ fun UthTodoApp(viewModel: OnboardingViewModel, navController: NavHostController 
                 }
             }
         }
+    }
+
+    LaunchedEffect(authNotice, authNoticeMessage) {
+        val notice = authNotice ?: return@LaunchedEffect
+        val message = authNoticeMessage ?: return@LaunchedEffect
+        snackbar.currentSnackbarData?.dismiss()
+        snackbar.showSnackbar(message, withDismissAction = true)
+        authViewModel.dismissNotice(notice)
     }
 
     LaunchedEffect(state.error) {
@@ -103,9 +131,35 @@ fun UthTodoApp(viewModel: OnboardingViewModel, navController: NavHostController 
             }
             composable(AppDestination.Welcome.route) {
                 WelcomeScreen(
-                    onGoogleClick = { scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(googleMessage) } },
-                    onGuestClick = { scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(guestMessage) } },
+                    isBusy = authState.isBusy,
+                    onGoogleClick = {
+                        authViewModel.signInWithGoogle {
+                            googleClient.getIdToken(activity ?: throw AuthFailure(AuthError.SERVICE_UNAVAILABLE))
+                        }
+                    },
+                    onGuestClick = authViewModel::continueAsGuest,
+                    onEmailClick = {
+                        navController.navigate(AppDestination.EmailAuth.route) { launchSingleTop = true }
+                    },
                 )
+            }
+            composable(AppDestination.EmailAuth.route) {
+                EmailAuthScreen(
+                    isBusy = authState.isBusy,
+                    onBack = { navController.popBackStack() },
+                    onSignIn = authViewModel::signInWithEmail,
+                    onRegister = authViewModel::registerWithEmail,
+                    onResetPassword = authViewModel::sendPasswordReset,
+                )
+            }
+            composable(AppDestination.Home.route) {
+                HomeScreen(authState.session) {
+                    navController.navigate(AppDestination.Profile.route) { launchSingleTop = true }
+                }
+            }
+            composable(AppDestination.Profile.route) {
+                ProfileScreen(authState.session, authState.isBusy,
+                    onBack = { navController.popBackStack() }, onSignOut = authViewModel::signOut)
             }
         }
     }

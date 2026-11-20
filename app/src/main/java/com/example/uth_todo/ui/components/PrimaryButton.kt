@@ -22,13 +22,14 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     leadingIcon: (@Composable () -> Unit)? = null,
+    tag: String = "primary_button",
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(18.dp),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("primary_button"),
+        modifier = modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(tag),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)) {
             leadingIcon?.invoke()

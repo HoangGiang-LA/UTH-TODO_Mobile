@@ -9,6 +9,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uth_todo.data.preferences.OnboardingPreferences
+import com.example.uth_todo.data.auth.FirebaseAuthRepository
+import com.example.uth_todo.ui.auth.AuthViewModel
 import com.example.uth_todo.navigation.UthTodoApp
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
 import com.example.uth_todo.ui.theme.UTHTODOTheme
@@ -18,13 +20,15 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val onboardingFactory = viewModelFactory {
+        val appFactory = viewModelFactory {
             initializer { OnboardingViewModel(OnboardingPreferences(applicationContext)) }
+            initializer { AuthViewModel(FirebaseAuthRepository(applicationContext)) }
         }
         setContent {
             UTHTODOTheme {
-                val onboardingViewModel: OnboardingViewModel = viewModel(factory = onboardingFactory)
-                UthTodoApp(onboardingViewModel)
+                val onboardingViewModel: OnboardingViewModel = viewModel(factory = appFactory)
+                val authViewModel: AuthViewModel = viewModel(factory = appFactory)
+                UthTodoApp(onboardingViewModel, authViewModel = authViewModel)
             }
         }
     }

@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
@@ -27,6 +28,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.espresso.Espresso.pressBack
 import com.example.uth_todo.data.preferences.OnboardingPreferences
+import com.example.uth_todo.data.auth.AuthRepository
+import com.example.uth_todo.model.AuthSession
+import com.example.uth_todo.model.UserProfile
+import com.example.uth_todo.ui.auth.AuthViewModel
+import androidx.test.platform.app.InstrumentationRegistry
 import com.example.uth_todo.navigation.AppDestination
 import com.example.uth_todo.navigation.UthTodoApp
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -46,17 +52,22 @@ class OnboardingFlowTest {
 
     @After fun clearViewModels() { compose.runOnIdle { models.clear() } }
 
-    private fun launchFlow(completed: Boolean = false) {
+    private fun launchFlow(completed: Boolean = false, initialSession: AuthSession = AuthSession.SignedOut, configured: Boolean = false) {
         compose.setContent {
             navController = rememberNavController()
             val model = androidx.compose.runtime.remember {
                 OnboardingViewModel(OnboardingPreferences(MemoryPreferences(completed))).also { models.put("onboarding", it) }
             }
-            UTHTODOTheme { UthTodoApp(model, navController) }
+            val auth = androidx.compose.runtime.remember {
+                AuthViewModel(UiAuthRepository(initialSession, configured)).also { models.put("auth", it) }
+            }
+            UTHTODOTheme { UthTodoApp(model, auth, navController) }
         }
         compose.waitUntil(6_000) {
             navController.currentDestination?.route ==
-                (if (completed) AppDestination.Welcome.route else AppDestination.Onboarding.route)
+                (if (!completed) AppDestination.Onboarding.route
+                    else if (initialSession is AuthSession.SignedIn || initialSession == AuthSession.Guest) AppDestination.Home.route
+                    else AppDestination.Welcome.route)
         }
         compose.waitForIdle()
     }
@@ -76,15 +87,15 @@ class OnboardingFlowTest {
         compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
     }
 
-    @Test fun skipClearsIntroductionAndBothWelcomeActionsGiveHonestFeedback() {
+    @Test fun skipClearsIntroductionAndMissingConfigurationReportsAnError() {
         launchFlow()
         compose.onNodeWithTag("skip_button").performClick()
         compose.onNodeWithTag("welcome_title").assertIsDisplayed()
         compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
         compose.onNodeWithTag("primary_button").performClick()
-        compose.onNodeWithText("Đăng nhập Google sẽ được kết nối ở BTVN 02.").assertIsDisplayed()
-        compose.onNodeWithTag("guest_button").performClick()
-        compose.onNodeWithText("Chế độ dùng thử sẽ được kết nối ở BTVN 02.").assertIsDisplayed()
+        compose.onNodeWithText(InstrumentationRegistry.getInstrumentation().targetContext
+            .getString(R.string.auth_error_service)).assertIsDisplayed()
+        compose.runOnIdle { assertEquals(AppDestination.Welcome.route, navController.currentDestination?.route) }
     }
 
     @Test fun getStartedClearsIntroduction() {
@@ -107,6 +118,38 @@ class OnboardingFlowTest {
         compose.onNodeWithTag("page_title_1").assertIsDisplayed()
         restoration.emulateSavedInstanceStateRestore()
         compose.onNodeWithTag("page_title_1").assertIsDisplayed()
+    }
+
+    @Test fun guestCanOpenProfileAndReturnToLoginWithNoProtectedBackStack() {
+        launchFlow(completed = true)
+        compose.onNodeWithTag("guest_button").performClick()
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+        compose.onNodeWithTag("open_profile").performScrollTo().performClick()
+        compose.onNodeWithTag("profile_title").assertIsDisplayed()
+        compose.onNodeWithTag("sign_out_button").performScrollTo().performClick()
+        compose.onNodeWithTag("welcome_title").assertIsDisplayed()
+        compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
+    }
+
+    @Test fun restoredUserSeesHomeProfileAndCanSignOut() {
+        val user = UserProfile("test-user", "Student", "student@example.com", true)
+        launchFlow(completed = true, initialSession = AuthSession.SignedIn(user))
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+        compose.onNodeWithTag("open_profile").performScrollTo().performClick()
+        compose.onNodeWithText(user.email!!).assertIsDisplayed()
+        compose.onNodeWithTag("sign_out_button").performScrollTo().performClick()
+        compose.onNodeWithTag("welcome_title").assertIsDisplayed()
+        compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
+    }
+
+    @Test fun emailFormIsConnectedToRepositoryAndHomeNavigation() {
+        launchFlow(completed = true, configured = true)
+        compose.onNodeWithTag("email_button").performClick()
+        compose.onNodeWithTag("auth_email").performTextInput("student@example.com")
+        compose.onNodeWithTag("auth_password").performTextInput("test-password")
+        compose.onNodeWithTag("primary_button").performScrollTo().performClick()
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+        compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
     }
 
     @Test fun smallViewportWithLargeFontKeepsActionsReachable() {
@@ -134,4 +177,17 @@ private class MemoryPreferences(completed: Boolean = false) : DataStore<Preferen
     override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
         return transform(data.value).also { data.value = it }
     }
+}
+
+// UI-only fake: no Firebase calls, account chooser, or user's app data.
+private class UiAuthRepository(initial: AuthSession, override val isConfigured: Boolean) : AuthRepository {
+    override val session = MutableStateFlow(initial)
+    override suspend fun signInWithGoogle(idToken: String) { signInWithEmail("student@example.com", "unused") }
+    override suspend fun signInWithEmail(email: String, password: String) {
+        session.value = AuthSession.SignedIn(UserProfile("test-user", "Student", email, true))
+    }
+    override suspend fun registerWithEmail(email: String, password: String) { signInWithEmail(email, password) }
+    override suspend fun sendPasswordReset(email: String) = Unit
+    override fun continueAsGuest() { session.value = AuthSession.Guest }
+    override suspend fun signOut() { session.value = AuthSession.SignedOut }
 }
