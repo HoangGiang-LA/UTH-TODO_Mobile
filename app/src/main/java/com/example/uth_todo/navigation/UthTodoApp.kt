@@ -85,6 +85,16 @@ fun UthTodoApp(
     val taskNoticeMessage = taskNotice?.let { stringResource(it.messageResource()) }
     val splashVisible = route == null || route == AppDestination.Splash.route
     val createdNotice = homeState?.createdNotice
+    val pendingDataModeNavigation = homeState?.pendingDataModeNavigation == true
+    LaunchedEffect(pendingDataModeNavigation) {
+        if (pendingDataModeNavigation && (authState.session is AuthSession.SignedIn || authState.session == AuthSession.Guest)) {
+            navController.navigate(AppDestination.Home.route) {
+                popUpTo(navController.graph.id) { inclusive = false }
+                launchSingleTop = true
+            }
+            homeViewModel?.dataModeNavigationHandled()
+        }
+    }
     val createdMessage = createdNotice?.let { stringResource(R.string.task_created_message, it.title) }
 
     LaunchedEffect(createdNotice?.id, createdMessage) {
@@ -289,7 +299,7 @@ fun UthTodoApp(
                 LaunchedEffect(creation.created?.id, creation.isSaving) {
                     if (creation.created != null && !creation.isSaving) goBack()
                 }
-                TaskCreateScreen(creation, onBack = goBack,
+                TaskCreateScreen(creation, onBack = goBack, dataMode = homeState?.dataMode,
                     onDraft = { homeViewModel?.changeCreationDraft(it) }, onCreate = { homeViewModel?.createTask() },
                     onAllowRetry = { homeViewModel?.allowCreationRetry() },
                     onReviewList = {
@@ -314,7 +324,7 @@ fun UthTodoApp(
                 }
                 LaunchedEffect(detailEntry.id, authState.session) { homeViewModel?.openTask(id, detailEntry.id) }
                 LaunchedEffect(detail.deleted) { if (detail.deleted) goBack() }
-                TaskDetailScreen(detail, onBack = goBack,
+                TaskDetailScreen(detail, onBack = goBack, dataMode = homeState?.dataMode,
                     onRetry = { homeViewModel?.retryTaskDetail() }, onEdit = { homeViewModel?.beginTaskEdit() },
                     onDraft = { homeViewModel?.changeTaskDraft(it) }, onCancelEdit = { homeViewModel?.cancelTaskEdit() },
                     onSave = { homeViewModel?.saveTaskEdit() }, onToggle = { homeViewModel?.toggleDetailDone() },
@@ -329,7 +339,12 @@ fun UthTodoApp(
                     onSaveName = { servicesViewModel?.saveDisplayName(it) },
                     onRetryProfile = { servicesViewModel?.retryProfile() },
                     onNameEdited = { servicesViewModel?.dismissSaveResult() },
-                    showNotifications = servicesViewModel != null)
+                    showNotifications = servicesViewModel != null,
+                    showTaskStorage = homeViewModel?.hasDataModeSettings == true,
+                    taskDataMode = homeState?.dataMode,
+                    isChangingTaskData = homeState?.isChangingDataMode == true || homeState?.changingTaskId != null || homeState?.creation?.isSaving == true,
+                    onTaskDataMode = { homeViewModel?.selectTaskDataMode(it) },
+                    hasUnsavedTaskChanges = homeState?.creation?.isDirty == true || homeState?.detail?.isDirty == true)
             }
         }
     }

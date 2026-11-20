@@ -29,6 +29,7 @@ import com.example.uth_todo.model.TodoTask
 import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.TaskBottomBar
 import com.example.uth_todo.ui.components.TaskTab
+import com.example.uth_todo.ui.components.TaskStorageNotice
 import com.example.uth_todo.ui.home.*
 import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
@@ -77,6 +78,7 @@ fun TaskListScreen(
                             }
                         }
                     }
+                    TaskStorageNotice(tasksState.dataMode, onSettings = onProfile)
                     OutlinedTextField(listState.query, onValueChange = onQuery, singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = { focus.clearFocus() }),

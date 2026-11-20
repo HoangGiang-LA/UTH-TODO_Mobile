@@ -21,6 +21,7 @@ import com.example.uth_todo.model.*
 import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.TaskBottomBar
 import com.example.uth_todo.ui.components.TaskTab
+import com.example.uth_todo.ui.components.TaskStorageNotice
 import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -70,6 +71,7 @@ fun HomeScreen(
             if (!announcement.isNullOrBlank()) Card(Modifier.fillMaxWidth().testTag("home_announcement")) {
                 Text(announcement, modifier = Modifier.padding(16.dp))
             }
+            TaskStorageNotice(state.dataMode, onSettings = onProfile)
             TaskProgressCard(summary, state.hasLoaded, isToday)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryCard(TaskCategory.STUDY, summary.studyRemaining, state.hasLoaded,

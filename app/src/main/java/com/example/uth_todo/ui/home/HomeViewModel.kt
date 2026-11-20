@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uth_todo.data.tasks.TaskDates
 import com.example.uth_todo.data.tasks.TaskRepository
+import com.example.uth_todo.data.tasks.TaskDataController
 import com.example.uth_todo.model.AuthSession
 import com.example.uth_todo.model.TaskApiError
 import com.example.uth_todo.model.TaskApiFailure
@@ -13,6 +14,7 @@ import com.example.uth_todo.model.TaskDraft
 import com.example.uth_todo.model.TaskCategory
 import com.example.uth_todo.model.TaskFilter
 import com.example.uth_todo.model.TaskCreateFailure
+import com.example.uth_todo.model.TaskDataMode
 import com.example.uth_todo.ui.taskcreate.TaskCreateUiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,9 +36,14 @@ data class HomeUiState(
     val detail: TaskDetailUiState = TaskDetailUiState(),
     val creation: TaskCreateUiState = TaskCreateUiState(),
     val createdNotice: TodoTask? = null,
+    val dataMode: TaskDataMode? = null,
+    val isChangingDataMode: Boolean = false,
+    val dataSourceRevision: Int = 0,
+    val pendingDataModeNavigation: Boolean = false,
 )
 
 class HomeViewModel(private val repository: TaskRepository, private val today: () -> String = TaskDates::today) : ViewModel() {
+    val hasDataModeSettings: Boolean get() = repository is TaskDataController
     private val mutableState = MutableStateFlow(HomeUiState(selectedDate = today()))
     val uiState = mutableState.asStateFlow()
     private var sessionKey: String? = null
@@ -45,6 +52,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
     private var loading: Job? = null
     private var changing: Job? = null
     private var creating: Job? = null
+    private var changingDataMode: Job? = null
     private var detailLoading: Job? = null
     private var detailGeneration = 0
     private var skipNextScreenRefresh = false
@@ -61,10 +69,12 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         loading?.cancel()
         changing?.cancel()
         creating?.cancel()
+        changingDataMode?.cancel()
         detailLoading?.cancel()
         detailGeneration++
         skipNextScreenRefresh = false
         sessionKey = key
+        (repository as? TaskDataController)?.bindSession(session)
         mutableState.value = HomeUiState(selectedDate = today())
         if (key != null) refresh()
     }
@@ -84,7 +94,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
 
     fun refresh() {
         val state = mutableState.value
-        if (sessionKey == null || state.isLoading || state.changingTaskId != null || state.detail.isLoading || state.creation.isSaving) return
+        if (sessionKey == null || state.isLoading || state.changingTaskId != null || state.detail.isLoading || state.creation.isSaving || state.isChangingDataMode) return
         if (!repository.isConfigured) {
             mutableState.update { it.copy(error = TaskApiError.NOT_CONFIGURED) }
             return
@@ -94,6 +104,9 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         mutableState.update { it.copy(isLoading = true, error = null, notice = null) }
         loading = viewModelScope.launch {
             try {
+                val mode = (repository as? TaskDataController)?.currentMode()
+                if (current == generation && requestGeneration == listGeneration)
+                    mutableState.update { it.copy(dataMode = mode) }
                 val tasks = withTimeout(25_000) { repository.loadTasks() }
                 if (current == generation && requestGeneration == listGeneration)
                     mutableState.update { it.copy(tasks = tasks, hasLoaded = true) }
@@ -114,7 +127,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
 
     fun toggleDone(id: Long) {
         val state = mutableState.value
-        if (sessionKey == null || state.isLoading || state.changingTaskId != null || state.creation.isSaving) return
+        if (sessionKey == null || state.isLoading || state.changingTaskId != null || state.creation.isSaving || state.isChangingDataMode) return
         val task = state.tasks.firstOrNull { it.id == id } ?: return
         val current = generation
         mutableState.update { it.copy(changingTaskId = id, notice = null) }
@@ -142,7 +155,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
     }
 
     fun openTask(id: Long, entryKey: String) {
-        if (sessionKey == null || mutableState.value.changingTaskId != null || mutableState.value.creation.isSaving) return
+        if (sessionKey == null || mutableState.value.changingTaskId != null || mutableState.value.creation.isSaving || mutableState.value.isChangingDataMode) return
         val detail = mutableState.value.detail
         if (detail.entryKey == entryKey && detail.id == id) return
         // A restored detail route may arrive while the initial list GET is pending.
@@ -158,7 +171,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
     fun retryTaskDetail() {
         val detail = mutableState.value.detail
         val id = detail.id ?: return
-        if (sessionKey == null || detail.isLoading || detail.isSaving || detail.isEditing || mutableState.value.creation.isSaving) return
+        if (sessionKey == null || detail.isLoading || detail.isSaving || detail.isEditing || mutableState.value.creation.isSaving || mutableState.value.isChangingDataMode) return
         if (id <= 0 || !repository.isConfigured) {
             mutableState.update { it.copy(detail = it.detail.copy(error =
                 if (id <= 0) TaskApiError.NOT_FOUND else TaskApiError.NOT_CONFIGURED)) }
@@ -245,7 +258,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         command: suspend () -> Unit) {
         val state = mutableState.value
         val detail = state.detail
-        if (sessionKey == null || state.isLoading || state.changingTaskId != null || detail.isLoading || state.creation.isSaving ||
+        if (sessionKey == null || state.isLoading || state.changingTaskId != null || detail.isLoading || state.creation.isSaving || state.isChangingDataMode ||
             detail.deleted || detail.error != null || (detail.isEditing && !finishEdit)) return
         val current = generation
         val entryKey = detail.entryKey
@@ -280,7 +293,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
 
     fun beginTaskCreation(entryKey: String, filter: TaskFilter = TaskFilter.ALL, date: String = today()) {
         val state = mutableState.value
-        if (sessionKey == null || state.changingTaskId != null || state.creation.isSaving || state.creation.entryKey == entryKey) return
+        if (sessionKey == null || state.changingTaskId != null || state.creation.isSaving || state.creation.entryKey == entryKey || state.isChangingDataMode) return
         cancelReadsForCreation()
         val draft = TaskDraft.blank(date.takeIf(TaskDates::isValidDate) ?: today(),
             if (filter == TaskFilter.LIFE) TaskCategory.LIFE else TaskCategory.STUDY)
@@ -309,7 +322,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         val state = mutableState.value
         val creation = state.creation
         if (sessionKey == null || creation.entryKey == null || creation.isSaving || creation.created != null ||
-            creation.requiresReview || state.changingTaskId != null) return
+            creation.requiresReview || state.changingTaskId != null || state.isChangingDataMode) return
         val validation = creation.draft.validationError()
         if (validation != null) {
             mutableState.update { it.copy(creation = it.creation.copy(validation = validation)) }
@@ -353,6 +366,39 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
                 if (current == generation) mutableState.update { it.copy(creation = it.creation.copy(isSaving = false)) }
             }
         }
+    }
+
+    fun selectTaskDataMode(mode: TaskDataMode) {
+        val controller = repository as? TaskDataController ?: return
+        val original = mutableState.value
+        if (sessionKey == null || original.dataMode == mode || original.isChangingDataMode ||
+            original.changingTaskId != null || original.creation.isSaving) return
+        val current = ++generation
+        listGeneration++
+        detailGeneration++
+        loading?.cancel()
+        detailLoading?.cancel()
+        skipNextScreenRefresh = false
+        mutableState.update { it.copy(isLoading = false, isChangingDataMode = true) }
+        changingDataMode = viewModelScope.launch {
+            try {
+                controller.selectMode(mode)
+                if (current == generation) {
+                    mutableState.value = HomeUiState(selectedDate = original.selectedDate, dataMode = mode,
+                        dataSourceRevision = original.dataSourceRevision + 1, pendingDataModeNavigation = true)
+                    refresh()
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                if (current == generation) mutableState.value = original.copy(isLoading = false,
+                    isChangingDataMode = false, notice = failure.reason())
+            }
+        }
+    }
+
+    fun dataModeNavigationHandled() {
+        mutableState.update { it.copy(pendingDataModeNavigation = false) }
     }
 
     private fun cancelReadsForCreation() {

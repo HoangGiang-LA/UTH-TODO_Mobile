@@ -14,6 +14,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.example.uth_todo.R
 import com.example.uth_todo.model.TaskDraft
+import com.example.uth_todo.model.TaskDataMode
+import com.example.uth_todo.ui.components.TaskStorageNotice
 import com.example.uth_todo.ui.components.TaskEditor
 import com.example.uth_todo.ui.components.messageResource
 import com.example.uth_todo.ui.home.messageResource
@@ -27,6 +29,7 @@ fun TaskCreateScreen(
     onCreate: () -> Unit,
     onReviewList: () -> Unit,
     onAllowRetry: () -> Unit,
+    dataMode: TaskDataMode? = null,
 ) {
     var confirmDiscard by rememberSaveable(state.entryKey) { mutableStateOf(false) }
     var confirmRetry by rememberSaveable(state.entryKey) { mutableStateOf(false) }
@@ -48,6 +51,7 @@ fun TaskCreateScreen(
         Text(stringResource(R.string.task_add), style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.testTag("task_create_title_heading"))
         if (state.isSaving) LinearProgressIndicator(Modifier.fillMaxWidth().testTag("task_create_loading"))
+        TaskStorageNotice(dataMode)
         state.validation?.let { error ->
             CreateError(stringResource(error.messageResource()))
         }

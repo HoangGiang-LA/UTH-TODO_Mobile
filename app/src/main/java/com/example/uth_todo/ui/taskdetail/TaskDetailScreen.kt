@@ -23,6 +23,7 @@ import com.example.uth_todo.ui.home.*
 import com.example.uth_todo.ui.components.TaskEditor
 import com.example.uth_todo.ui.components.labelResource
 import com.example.uth_todo.ui.components.messageResource
+import com.example.uth_todo.ui.components.TaskStorageNotice
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,6 +39,7 @@ fun TaskDetailScreen(
     onToggle: () -> Unit,
     onSubtask: (Int) -> Unit,
     onDelete: () -> Unit,
+    dataMode: TaskDataMode? = null,
 ) {
     var confirmDelete by rememberSaveable(state.entryKey) { mutableStateOf(false) }
     var confirmDiscard by rememberSaveable(state.entryKey) { mutableStateOf(false) }
@@ -82,6 +84,7 @@ fun TaskDetailScreen(
             style = MaterialTheme.typography.titleMedium, modifier = Modifier.testTag("task_detail_title"))
         if (state.isLoading || state.isSaving) LinearProgressIndicator(
             Modifier.fillMaxWidth().testTag("task_detail_loading"))
+        TaskStorageNotice(dataMode)
         state.error?.let { error ->
             DetailError(stringResource(error.messageResource()))
             Button(onClick = onRetry, enabled = !state.isLoading, modifier = Modifier.testTag("task_detail_retry")) {

@@ -19,8 +19,8 @@ data class TodoTask(
     val subtasks: List<TodoSubtask> = emptyList(),
 )
 
-enum class TaskApiError { NOT_CONFIGURED, UNAUTHORIZED, NOT_FOUND, NETWORK, TIMEOUT, SERVER, RATE_LIMITED, INVALID_RESPONSE, CREATE_MISMATCH, UNKNOWN }
-class TaskApiFailure(val reason: TaskApiError) : Exception(reason.name)
+enum class TaskApiError { NOT_CONFIGURED, UNAUTHORIZED, NOT_FOUND, NETWORK, TIMEOUT, SERVER, RATE_LIMITED, INVALID_RESPONSE, CREATE_MISMATCH, LOCAL_STORAGE, UNKNOWN }
+class TaskApiFailure(val reason: TaskApiError, cause: Throwable? = null) : Exception(reason.name, cause)
 class TaskCreateFailure(val reason: TaskApiError, val mayHaveCreated: Boolean) : Exception(reason.name)
 
 data class TaskDaySummary(val total: Int, val completed: Int, val studyRemaining: Int, val lifeRemaining: Int) {

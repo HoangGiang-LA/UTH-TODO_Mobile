@@ -2,6 +2,12 @@
 
 Ngày: 20/11/2026. Base: Chi tiết commit `b27f9d3`, người dùng xác nhận đã test/push. Nhánh dự kiến: `feature/task-create-api`.
 
+## Cập nhật sau commit f099f0c
+
+Đã bổ sung kho CRUD lưu thật trên thiết bị và lựa chọn API bài tập riêng; xem [TASK-PERSISTENCE-REPORT.md](TASK-PERSISTENCE-REPORT.md) cho trạng thái hiện tại, cách build và lệnh commit. Mặc định mới là Công việc trên thiết bị; API không còn là nguồn mặc định cho dữ liệu cá nhân.
+
+Nội dung bên dưới lưu lịch sử triển khai và lỗi nghiệm thu của mốc API. Việc thêm kho trên thiết bị không chứng minh POST mock đã lưu dữ liệu; các giới hạn API bên dưới vẫn áp dụng khi chọn Dữ liệu mẫu của bài tập.
+
 ## Lỗi nghiệm thu “Lau nha”
 
 Người dùng báo tạo “Lau nha” nhưng ứng dụng thêm một việc ôn tập chương 4 không liên quan. **Mốc tạo mới chưa đạt nghiệm thu.** Mã trước chấp nhận object task trong response POST mà chưa so sánh nội dung với bản nháp; đây là lỗi xử lý phía ứng dụng. Không phải tên công việc cần được AI nhận diện.

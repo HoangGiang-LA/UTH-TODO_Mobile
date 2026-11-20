@@ -565,6 +565,94 @@ class OnboardingFlowTest {
         compose.onNodeWithTag("task_create_submit").performScrollTo().assertIsDisplayed().performClick()
         compose.runOnIdle { assertEquals(true, submitted) }
     }
+
+    @Test fun deviceCreateLauNhaRefreshAndDetailKeepTheExactSavedContent() {
+        val api = StorageCourseRepository()
+        val repository = com.example.uth_todo.data.tasks.SessionTaskRepository(
+            com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences()), api)
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_add_action").performClick()
+        compose.onNodeWithTag("task_create_title").performScrollTo().performTextInput("Lau nha")
+        compose.onNodeWithTag("task_create_category_LIFE").performScrollTo().performClick()
+        compose.onNodeWithTag("task_create_submit").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("task_list_refresh").performScrollTo().performClick()
+        compose.onNodeWithTag("tasks_list").performScrollToNode(hasTestTag("list_task_1"))
+        compose.onNodeWithText("Lau nha").assertIsDisplayed()
+        compose.onNodeWithTag("list_task_1").performClick()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Lau nha")
+        compose.onNodeWithText("Ôn tập chương 4").assertDoesNotExist()
+        compose.runOnIdle { assertEquals(0, api.calls) }
+    }
+
+    @Test fun deviceTaskSurvivesSigningOutAndReturningAsTheSameGuest() {
+        val repository = com.example.uth_todo.data.tasks.SessionTaskRepository(
+            com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences()), StorageCourseRepository())
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_add_action").performClick()
+        compose.onNodeWithTag("task_create_title").performScrollTo().performTextInput("Lau nha")
+        compose.onNodeWithTag("task_create_submit").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("open_profile").performScrollTo().performClick()
+        compose.onNodeWithTag("sign_out_button").performScrollTo().performClick()
+        compose.onNodeWithTag("guest_button").performClick()
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("tasks_list").performScrollToNode(hasTestTag("list_task_1"))
+        compose.onNodeWithText("Lau nha").assertIsDisplayed()
+    }
+
+    @Test fun changingDataModeReturnsHomeAndPreservesDeviceTasksWhenSwitchingBack() {
+        val prefs = MemoryPreferences()
+        val repository = com.example.uth_todo.data.tasks.SessionTaskRepository(
+            com.example.uth_todo.data.tasks.DeviceTaskStorage(prefs), StorageCourseRepository())
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_add_action").performClick()
+        compose.onNodeWithTag("task_create_title").performScrollTo().performTextInput("Lau nha")
+        compose.onNodeWithTag("task_create_submit").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("open_profile").performScrollTo().performClick()
+        compose.onNodeWithTag("task_storage_mode_COURSE_API").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals(AppDestination.Home.route, navController.currentDestination?.route)
+            assertNull(navController.previousBackStackEntry)
+        }
+        compose.onNodeWithTag("task_storage_notice").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("tasks_list").performScrollToNode(hasTestTag("list_task_1"))
+        compose.onNodeWithText("Ôn tập chương 4").assertIsDisplayed()
+        compose.onNodeWithTag("task_tab_profile").performClick()
+        compose.onNodeWithTag("task_storage_mode_DEVICE").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("tasks_list").performScrollToNode(hasTestTag("list_task_1"))
+        compose.onNodeWithText("Lau nha").assertIsDisplayed()
+    }
+
+    @Test fun persistedDeviceEditAndDeleteStayCorrectAfterRefresh() {
+        val repository = com.example.uth_todo.data.tasks.SessionTaskRepository(
+            com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences()), StorageCourseRepository())
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_add_action").performClick()
+        compose.onNodeWithTag("task_create_title").performScrollTo().performTextInput("Lau nha")
+        compose.onNodeWithTag("task_create_submit").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("tasks_list").performScrollToNode(hasTestTag("list_task_1"))
+        compose.onNodeWithTag("list_task_1").performClick()
+        compose.onNodeWithTag("task_detail_edit").performScrollTo().performClick()
+        compose.onNodeWithTag("task_edit_title").performScrollTo().performTextReplacement("Lau nhà tầng 1")
+        compose.onNodeWithTag("task_edit_save").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_detail_refresh").performScrollTo().performClick()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Lau nhà tầng 1")
+        compose.onNodeWithTag("task_detail_delete").performScrollTo().performClick()
+        compose.onNodeWithTag("task_delete_confirm").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_list_refresh").performScrollTo().performClick()
+        compose.onNodeWithTag("list_task_1").assertDoesNotExist()
+    }
 }
 
 private class MemoryPreferences(completed: Boolean = false) : DataStore<Preferences> {
@@ -577,6 +665,23 @@ private class MemoryPreferences(completed: Boolean = false) : DataStore<Preferen
 }
 
 // UI-only fake: no Firebase calls, account chooser, or user's app data.
+
+private class StorageCourseRepository : TaskRepository {
+    override val isConfigured = true
+    var calls = 0
+    private val sample = TodoTask(1, "Ôn tập chương 4", TaskCategory.STUDY, null, null, false)
+    override suspend fun loadTasks(): List<TodoTask> { calls++; return listOf(sample) }
+    override suspend fun loadTask(id: Long): TodoTask { calls++; return sample }
+    override suspend fun setDone(id: Long, done: Boolean) { calls++ }
+    override suspend fun updateTask(task: TodoTask) { calls++ }
+    override suspend fun setSubtasks(id: Long, subtasks: List<com.example.uth_todo.model.TodoSubtask>) { calls++ }
+    override suspend fun deleteTask(id: Long) { calls++ }
+    override suspend fun createTask(draft: com.example.uth_todo.model.TaskDraft): TodoTask {
+        calls++
+        throw com.example.uth_todo.model.TaskCreateFailure(com.example.uth_todo.model.TaskApiError.CREATE_MISMATCH, true)
+    }
+}
+
 private class UiAuthRepository(initial: AuthSession, override val isConfigured: Boolean) : AuthRepository {
     override val session = MutableStateFlow(initial)
     override suspend fun signInWithGoogle(idToken: String) { signInWithEmail("student@example.com", "unused") }
