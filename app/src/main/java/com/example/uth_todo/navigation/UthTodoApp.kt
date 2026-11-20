@@ -45,6 +45,8 @@ import com.example.uth_todo.ui.home.HomeUiState
 import com.example.uth_todo.ui.home.messageResource
 import com.example.uth_todo.ui.tasklist.TaskListScreen
 import com.example.uth_todo.ui.tasklist.TaskListViewModel
+import com.example.uth_todo.ui.taskdetail.TaskDetailScreen
+import com.example.uth_todo.ui.taskdetail.TaskDetailUiState
 import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -193,6 +195,10 @@ fun UthTodoApp(
                         }
                     },
                     displayName = servicesState?.takeIf { uid != null && it.uid == uid }?.displayName,
+                    onOpenTask = { id ->
+                        if (navController.currentDestination?.route == AppDestination.Home.route)
+                            navController.navigate(AppDestination.TaskDetail.location(id)) { launchSingleTop = true }
+                    },
                     announcement = servicesState?.homeConfig?.announcement,
                     state = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
                     onRefresh = { homeViewModel?.refresh() },
@@ -214,6 +220,10 @@ fun UthTodoApp(
                     tasksState = homeState ?: HomeUiState(error = com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED),
                     listState = listState,
                     onQuery = listViewModel::setQuery,
+                    onOpenTask = { id ->
+                        if (navController.currentDestination?.route == AppDestination.TaskList.route)
+                            navController.navigate(AppDestination.TaskDetail.location(id)) { launchSingleTop = true }
+                    },
                     onFilter = listViewModel::setFilter,
                     onClearSearch = listViewModel::clearSearch,
                     onRefresh = { homeViewModel?.refresh() },
@@ -228,6 +238,27 @@ fun UthTodoApp(
                     },
                     onProfile = { navController.navigate(AppDestination.Profile.route) { launchSingleTop = true } },
                 )
+            }
+            composable(AppDestination.TaskDetail.route, arguments = listOf(
+                navArgument(AppDestination.TaskDetail.ID_ARGUMENT) { type = NavType.LongType },
+            )) { detailEntry ->
+                val id = detailEntry.arguments?.getLong(AppDestination.TaskDetail.ID_ARGUMENT) ?: 0L
+                val detail = homeState?.detail?.takeIf { it.entryKey == detailEntry.id }
+                    ?: TaskDetailUiState(isLoading = homeViewModel != null,
+                        error = if (homeViewModel == null) com.example.uth_todo.model.TaskApiError.NOT_CONFIGURED else null)
+                val goBack: () -> Unit = {
+                    if (!navController.popBackStack()) navController.navigate(AppDestination.Home.route) {
+                        popUpTo(navController.graph.id) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                }
+                LaunchedEffect(detailEntry.id, authState.session) { homeViewModel?.openTask(id, detailEntry.id) }
+                LaunchedEffect(detail.deleted) { if (detail.deleted) goBack() }
+                TaskDetailScreen(detail, onBack = goBack,
+                    onRetry = { homeViewModel?.retryTaskDetail() }, onEdit = { homeViewModel?.beginTaskEdit() },
+                    onDraft = { homeViewModel?.changeTaskDraft(it) }, onCancelEdit = { homeViewModel?.cancelTaskEdit() },
+                    onSave = { homeViewModel?.saveTaskEdit() }, onToggle = { homeViewModel?.toggleDetailDone() },
+                    onSubtask = { homeViewModel?.toggleSubtask(it) }, onDelete = { homeViewModel?.deleteTask() })
             }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(authState.session, authState.isBusy,

@@ -138,7 +138,8 @@ fun CategoryCard(category: TaskCategory, remaining: Int, hasLoaded: Boolean, onC
 fun TaskRow(task: TodoTask, busyTaskId: Long?, onToggle: (Long) -> Unit, onOpen: (Long) -> Unit,
     prefix: String = "home", enabled: Boolean = true, scheduleText: String? = null) {
     val toggleLabel = stringResource(if (task.done) R.string.task_mark_pending else R.string.task_mark_done, task.title)
-    Card(onClick = { onOpen(task.id) }, modifier = Modifier.fillMaxWidth().testTag("${prefix}_task_${task.id}"),
+    Card(onClick = { onOpen(task.id) }, enabled = enabled && busyTaskId == null,
+        modifier = Modifier.fillMaxWidth().testTag("${prefix}_task_${task.id}"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(14.dp)) {
         Row(Modifier.fillMaxWidth().padding(end = 10.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically) {
@@ -180,6 +181,7 @@ fun TaskCategory.labelResource(): Int = when (this) {
 
 fun TaskApiError.messageResource(): Int = when (this) {
     TaskApiError.NOT_CONFIGURED -> R.string.tasks_not_configured
+    TaskApiError.NOT_FOUND -> R.string.task_not_found
     TaskApiError.UNAUTHORIZED -> R.string.tasks_unauthorized
     TaskApiError.NETWORK -> R.string.auth_error_network
     TaskApiError.TIMEOUT -> R.string.auth_error_timeout

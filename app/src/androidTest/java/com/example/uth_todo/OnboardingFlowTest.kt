@@ -6,6 +6,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
@@ -20,6 +21,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.Density
@@ -285,6 +287,129 @@ class OnboardingFlowTest {
         compose.runOnIdle { assertEquals(21L, toggled) }
     }
 
+
+    @Test fun homeTaskOpensDetailFromGetAndBackReturnsToHome() {
+        val repository = UiTaskRepository()
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("home_task_11").performScrollTo().performClick()
+        compose.onNodeWithTag("task_detail_task_title").assertTextEquals("Ôn chương 3")
+        compose.runOnIdle { assertEquals(1, repository.detailReads) }
+        pressBack()
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+    }
+
+    @Test fun listSearchAndCategorySurviveDetailAndBack() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository())
+        compose.onNodeWithTag("category_study").performScrollTo().performClick()
+        compose.onNodeWithTag("tasks_search").performTextInput("on chuong")
+        compose.onNodeWithTag("tasks_search").performImeAction()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_title").assertIsDisplayed()
+        pressBack()
+        compose.onNodeWithTag("tasks_search").assertTextContains("on chuong")
+        compose.onNodeWithTag("task_filter_STUDY").assertIsSelected()
+        compose.onNodeWithTag("list_task_11").assertIsDisplayed()
+    }
+
+    @Test fun detailSaveWaitsForAckThenReturnsUpdatedTaskToList() {
+        val repository = UiTaskRepository().apply { writeGate = CompletableDeferred() }
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_edit").performClick()
+        compose.onNodeWithTag("task_edit_title").performTextReplacement("Công việc đã sửa")
+        compose.onNodeWithTag("task_edit_save").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_edit_save").assertIsNotEnabled()
+        compose.runOnIdle { repository.writeGate!!.complete(Unit) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Công việc đã sửa")
+        pressBack()
+        compose.onNodeWithText("Công việc đã sửa").assertIsDisplayed()
+    }
+
+    @Test fun detailDeleteRequiresConfirmationAndKeepsRouteUntilAck() {
+        val repository = UiTaskRepository().apply { writeGate = CompletableDeferred() }
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_delete").performScrollTo().performClick()
+        pressBack()
+        compose.onNodeWithTag("task_delete_confirm").assertDoesNotExist()
+        compose.onNodeWithTag("task_detail_delete").performClick()
+        compose.onNodeWithTag("task_delete_confirm").performClick()
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(AppDestination.TaskDetail.route, navController.currentDestination?.route) }
+        compose.runOnIdle { repository.writeGate!!.complete(Unit) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_list_title").assertIsDisplayed()
+        compose.onNodeWithTag("list_task_11").assertDoesNotExist()
+    }
+
+    @Test fun dirtyDetailEditorAsksBeforeDiscardAndKeepsOriginalTask() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository())
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_edit").performClick()
+        compose.onNodeWithTag("task_edit_title").performTextReplacement("Unsaved")
+        compose.runOnIdle {
+            val home = models["home"] as HomeViewModel
+            assertEquals("Unsaved", home.uiState.value.detail.draft!!.title)
+        }
+        compose.onNodeWithTag("task_detail_back").performScrollTo().performClick()
+        compose.onNodeWithTag("task_discard_confirm").performClick()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Ôn chương 3")
+        pressBack()
+        compose.onNodeWithTag("list_task_11").assertIsDisplayed()
+    }
+
+    @Test fun detailReadFailureShowsRetryWithoutPretendingCachedListDataIsDetail() {
+        val repository = UiTaskRepository().apply { detailFailure = com.example.uth_todo.model.TaskApiError.NETWORK }
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository)
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_error").assertIsDisplayed()
+        compose.onNodeWithTag("task_detail_task_title").assertDoesNotExist()
+        compose.runOnIdle { repository.detailFailure = null }
+        compose.onNodeWithTag("task_detail_retry").performClick()
+        compose.onNodeWithTag("task_detail_task_title").assertTextEquals("Ôn chương 3")
+    }
+
+    @Test fun sessionLossWhileEditingDetailClearsDraftAndProtectedHistory() {
+        val auth = UiAuthRepository(AuthSession.Guest, false)
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository(), authRepository = auth)
+        compose.onNodeWithTag("task_tab_list").performClick()
+        compose.onNodeWithTag("list_task_11").performClick()
+        compose.onNodeWithTag("task_detail_edit").performClick()
+        compose.runOnIdle { auth.session.value = AuthSession.SignedOut }
+        compose.waitForIdle()
+        compose.onNodeWithTag("welcome_title").assertIsDisplayed()
+        compose.runOnIdle {
+            assertNull(navController.previousBackStackEntry)
+            assertNull((models["home"] as HomeViewModel).uiState.value.detail.draft)
+        }
+    }
+
+    @Test fun smallDetailWithLargeFontKeepsDeleteAndEditorActionsReachable() {
+        var requestedDelete = false
+        val task = TodoTask(21, "Công việc có nội dung dài cần kiểm tra", TaskCategory.STUDY, TaskDates.today(), "14:00", false)
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                UTHTODOTheme {
+                    Box(Modifier.requiredSize(320.dp, 480.dp)) {
+                        com.example.uth_todo.ui.taskdetail.TaskDetailScreen(
+                            com.example.uth_todo.ui.taskdetail.TaskDetailUiState(task = task),
+                            onBack = {}, onRetry = {}, onEdit = {}, onDraft = {}, onCancelEdit = {}, onSave = {},
+                            onToggle = {}, onSubtask = {}, onDelete = { requestedDelete = true })
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("task_detail_delete").performScrollTo().assertIsDisplayed().performClick()
+        compose.onNodeWithTag("task_delete_confirm").performClick()
+        compose.runOnIdle { assertEquals(true, requestedDelete) }
+    }
 }
 
 private class MemoryPreferences(completed: Boolean = false) : DataStore<Preferences> {
@@ -310,6 +435,25 @@ private class UiAuthRepository(initial: AuthSession, override val isConfigured: 
 }
 
 private class UiTaskRepository : TaskRepository {
+    var detailReads = 0
+    var detailFailure: com.example.uth_todo.model.TaskApiError? = null
+    override suspend fun loadTask(id: Long): TodoTask {
+        detailReads++
+        detailFailure?.let { throw com.example.uth_todo.model.TaskApiFailure(it) }
+        return tasks.single { it.id == id }
+    }
+    override suspend fun updateTask(task: TodoTask) {
+        writeGate?.await()
+        tasks = tasks.map { if (it.id == task.id) task else it }
+    }
+    override suspend fun setSubtasks(id: Long, subtasks: List<com.example.uth_todo.model.TodoSubtask>) {
+        writeGate?.await()
+        tasks = tasks.map { if (it.id == id) it.copy(subtasks = subtasks) else it }
+    }
+    override suspend fun deleteTask(id: Long) {
+        writeGate?.await()
+        tasks = tasks.filterNot { it.id == id }
+    }
     override val isConfigured = true
     private var tasks = listOf(
         TodoTask(11, "Ôn chương 3", TaskCategory.STUDY, TaskDates.today(), "14:00", false),

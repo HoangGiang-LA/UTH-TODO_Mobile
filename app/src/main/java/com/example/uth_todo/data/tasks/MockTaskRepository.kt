@@ -3,7 +3,9 @@ package com.example.uth_todo.data.tasks
 import com.example.uth_todo.model.TaskApiError
 import com.example.uth_todo.model.TaskApiFailure
 import com.example.uth_todo.model.TodoTask
-import com.google.gson.Gson
+import com.example.uth_todo.model.TodoSubtask
+import com.example.uth_todo.model.TaskCategory
+import com.example.uth_todo.model.TaskPriority
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -75,10 +77,41 @@ class MockTaskRepository(
     }
 
     override suspend fun setDone(id: Long, done: Boolean) {
+        patch(id, mapOf("done" to done))
+    }
+
+    override suspend fun loadTask(id: Long): TodoTask = withContext(Dispatchers.Default) {
         require(id > 0)
+        val task = decoder.decodeDetail(execute(request("https://share.tryapps.store/mock/teach/tasks/$id").get().build()).body)
+        if (task.id != id) throw TaskApiFailure(TaskApiError.INVALID_RESPONSE)
+        task
+    }
+
+    override suspend fun updateTask(task: TodoTask) {
+        require(task.title.isNotBlank() && task.subtasks.all { it.title.isNotBlank() })
+        require(task.category != TaskCategory.OTHER && task.priority != TaskPriority.OTHER)
+        // Use the same field names/types as GET. PATCH/DELETE accept any 2xx ACK.
+        patch(task.id, mapOf("title" to task.title, "category" to task.category.name.lowercase(),
+            "date" to task.date, "time" to task.time, "note" to task.note,
+            "priority" to task.priority.name.lowercase(), "remind" to task.remind,
+            "done" to task.done, "subtasks" to task.subtasks))
+    }
+
+    override suspend fun setSubtasks(id: Long, subtasks: List<TodoSubtask>) {
+        require(subtasks.all { it.title.isNotBlank() })
+        patch(id, mapOf("subtasks" to subtasks))
+    }
+
+    override suspend fun deleteTask(id: Long) {
+        require(id > 0)
+        execute(request("https://share.tryapps.store/mock/teach/tasks/$id").delete().build())
+    }
+
+    private suspend fun patch(id: Long, fields: Map<String, Any?>) {
+        require(id > 0)
+        val json = com.google.gson.GsonBuilder().serializeNulls().create().toJson(fields)
         execute(request("https://share.tryapps.store/mock/teach/tasks/$id")
-            .patch(Gson().toJson(mapOf("done" to done)).toRequestBody("application/json; charset=utf-8".toMediaType()))
-            .build())
+            .patch(json.toRequestBody("application/json; charset=utf-8".toMediaType())).build())
     }
 
     private fun request(url: String): Request.Builder {
@@ -91,6 +124,7 @@ class MockTaskRepository(
             val response = http.execute(request)
             if (response.status !in 200..299) throw TaskApiFailure(when (response.status) {
                 401, 403 -> TaskApiError.UNAUTHORIZED
+                404 -> TaskApiError.NOT_FOUND
                 429 -> TaskApiError.RATE_LIMITED
                 else -> TaskApiError.SERVER
             })

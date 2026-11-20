@@ -13,9 +13,13 @@ sealed class AppDestination(val route: String) {
         fun location(filter: TaskFilter): String = "task_list?category=${filter.name}"
     }
     data object Profile : AppDestination("profile")
+    data object TaskDetail : AppDestination("task_detail/{taskId}") {
+        const val ID_ARGUMENT = "taskId"
+        fun location(id: Long): String = "task_detail/$id"
+    }
 
     companion object {
         fun requiresSession(route: String?): Boolean =
-            route == Home.route || route == TaskList.route || route == Profile.route
+            route == Home.route || route == TaskList.route || route == Profile.route || route == TaskDetail.route
     }
 }
