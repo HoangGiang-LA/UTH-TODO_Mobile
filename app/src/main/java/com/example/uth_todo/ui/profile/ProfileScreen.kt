@@ -44,6 +44,8 @@ fun ProfileScreen(
     isChangingTaskData: Boolean = false,
     onTaskDataMode: (TaskDataMode) -> Unit = {},
     hasUnsavedTaskChanges: Boolean = false,
+    showReminders: Boolean = false,
+    onNotifications: () -> Unit = {},
 ) {
     val user = (session as? AuthSession.SignedIn)?.user
     val missing = stringResource(R.string.profile_not_provided)
@@ -77,6 +79,9 @@ fun ProfileScreen(
             }
             if (showTaskStorage) TaskStorageSettingsCard(taskDataMode, isChangingTaskData || isBusy, onTaskDataMode, hasUnsavedTaskChanges)
             if (showNotifications) NotificationPreferenceCard()
+            if (showReminders) TextButton(onClick = onNotifications, modifier = Modifier.testTag("profile_reminders")) {
+                Text(stringResource(R.string.reminders_title))
+            }
             PrimaryButton(
                 stringResource(if (isBusy) R.string.auth_processing else if (session == AuthSession.Guest) R.string.auth_sign_in else R.string.profile_sign_out),
                 onSignOut, enabled = !isBusy, tag = "sign_out_button",

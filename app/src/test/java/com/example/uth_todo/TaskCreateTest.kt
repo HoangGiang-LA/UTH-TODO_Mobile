@@ -38,7 +38,7 @@ class TaskCreateTest {
 
     @Test fun postSendsNormalizedFieldsWithoutClientIdAndPreservesTypes() = runTest {
         val http = CreateHttp(TaskHttpResponse(201, "{\"id\":9}"))
-        val draft = validDraft().copy(date = "", time = "", remind = true)
+        val draft = validDraft().copy(date = "", time = "", remind = false)
         val task = MockTaskRepository(" test-only-token ", http).createTask(draft)
         val request = http.requests.single()
         assertEquals("POST", request.method)
@@ -51,7 +51,7 @@ class TaskCreateTest {
         assertTrue(json["date"].isJsonNull)
         assertTrue(json["time"].isJsonNull)
         assertFalse(json["done"].asBoolean)
-        assertTrue(json["remind"].asBoolean)
+        assertFalse(json["remind"].asBoolean)
         assertEquals("Step", json["subtasks"].asJsonArray[0].asJsonObject["title"].asString)
         assertEquals(9L, task.id)
         assertFalse(task.done)

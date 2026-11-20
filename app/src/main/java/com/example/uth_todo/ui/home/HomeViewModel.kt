@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.uth_todo.data.tasks.TaskDates
 import com.example.uth_todo.data.tasks.TaskRepository
 import com.example.uth_todo.data.tasks.TaskDataController
+import com.example.uth_todo.data.tasks.TaskSessionScope
 import com.example.uth_todo.model.AuthSession
 import com.example.uth_todo.model.TaskApiError
 import com.example.uth_todo.model.TaskApiFailure
@@ -16,6 +17,7 @@ import com.example.uth_todo.model.TaskFilter
 import com.example.uth_todo.model.TaskCreateFailure
 import com.example.uth_todo.model.TaskDataMode
 import com.example.uth_todo.ui.taskcreate.TaskCreateUiState
+import com.example.uth_todo.notifications.TaskReminderController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -40,9 +42,11 @@ data class HomeUiState(
     val isChangingDataMode: Boolean = false,
     val dataSourceRevision: Int = 0,
     val pendingDataModeNavigation: Boolean = false,
+    val sessionScope: String? = null,
 )
 
-class HomeViewModel(private val repository: TaskRepository, private val today: () -> String = TaskDates::today) : ViewModel() {
+class HomeViewModel(private val repository: TaskRepository, private val reminders: TaskReminderController? = null,
+    private val today: () -> String = TaskDates::today) : ViewModel() {
     val hasDataModeSettings: Boolean get() = repository is TaskDataController
     private val mutableState = MutableStateFlow(HomeUiState(selectedDate = today()))
     val uiState = mutableState.asStateFlow()
@@ -75,7 +79,8 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
         skipNextScreenRefresh = false
         sessionKey = key
         (repository as? TaskDataController)?.bindSession(session)
-        mutableState.value = HomeUiState(selectedDate = today())
+        reminders?.bindSession(session)
+        mutableState.value = HomeUiState(selectedDate = today(), sessionScope = TaskSessionScope.from(session))
         if (key != null) refresh()
     }
 
@@ -385,7 +390,7 @@ class HomeViewModel(private val repository: TaskRepository, private val today: (
                 controller.selectMode(mode)
                 if (current == generation) {
                     mutableState.value = HomeUiState(selectedDate = original.selectedDate, dataMode = mode,
-                        dataSourceRevision = original.dataSourceRevision + 1, pendingDataModeNavigation = true)
+                        dataSourceRevision = original.dataSourceRevision + 1, pendingDataModeNavigation = true, sessionScope = original.sessionScope)
                     refresh()
                 }
             } catch (cancelled: CancellationException) {

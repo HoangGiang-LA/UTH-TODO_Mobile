@@ -15,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -50,6 +51,11 @@ import com.example.uth_todo.ui.taskdetail.TaskDetailUiState
 import com.example.uth_todo.ui.taskcreate.TaskCreateScreen
 import com.example.uth_todo.ui.taskcreate.TaskCreateUiState
 import com.example.uth_todo.data.tasks.TaskDates
+import com.example.uth_todo.data.tasks.TaskSessionScope
+import com.example.uth_todo.model.TaskDataMode
+import com.example.uth_todo.notifications.*
+import com.example.uth_todo.ui.notifications.NotificationSettingsRoute
+import kotlinx.coroutines.launch
 import com.example.uth_todo.ui.profile.ProfileScreen
 import com.example.uth_todo.ui.profile.FirebaseServicesViewModel
 import com.example.uth_todo.ui.onboarding.OnboardingScreen
@@ -65,14 +71,21 @@ fun UthTodoApp(
     navController: NavHostController = rememberNavController(),
     servicesViewModel: FirebaseServicesViewModel? = null,
     homeViewModel: HomeViewModel? = null,
+    reminderController: TaskReminderController? = null,
+    reminderOpenRequest: ReminderOpenRequest? = null,
+    onReminderRequestHandled: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val servicesState = servicesViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val homeState = homeViewModel?.uiState?.collectAsStateWithLifecycle()?.value
+    val reminderState = reminderController?.uiState?.collectAsStateWithLifecycle()?.value ?: ReminderServiceState()
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
     val snackbar = remember { SnackbarHostState() }
+    val appScope = rememberCoroutineScope()
+    val reminderOwnerMessage = stringResource(R.string.reminders_wrong_owner)
+    val reminderModeMessage = stringResource(R.string.reminders_choose_device)
     val context = LocalContext.current
     val activity = LocalActivity.current as? ComponentActivity
     val googleClient = remember { GoogleCredentialClient() }
@@ -109,6 +122,23 @@ fun UthTodoApp(
         servicesViewModel?.bindSession(authState.session)
     }
     LaunchedEffect(authState.session, homeViewModel) { homeViewModel?.bindSession(authState.session) }
+    LaunchedEffect(reminderOpenRequest, authState.session, route, homeState?.dataMode, homeState?.sessionScope,
+        homeState?.isLoading, homeState?.changingTaskId, homeState?.creation?.isSaving,
+        authState.isBusy, homeState?.pendingDataModeNavigation, homeState?.isChangingDataMode) {
+        val request = reminderOpenRequest ?: return@LaunchedEffect
+        val owner = TaskSessionScope.from(authState.session) ?: return@LaunchedEffect
+        if (state.isLoading || authState.isBusy || route == null || route == AppDestination.Splash.route ||
+            route == AppDestination.Welcome.route || route == AppDestination.Onboarding.route || route == AppDestination.EmailAuth.route) return@LaunchedEffect
+        val taskState = homeState ?: return@LaunchedEffect
+        if (taskState.sessionScope != owner || taskState.dataMode == null || taskState.isLoading ||
+            taskState.changingTaskId != null || taskState.creation.isSaving || taskState.pendingDataModeNavigation || taskState.isChangingDataMode) return@LaunchedEffect
+        onReminderRequestHandled()
+        when {
+            owner != request.scope -> appScope.launch { snackbar.showSnackbar(reminderOwnerMessage, withDismissAction = true) }
+            taskState.dataMode != TaskDataMode.DEVICE -> appScope.launch { snackbar.showSnackbar(reminderModeMessage, withDismissAction = true) }
+            else -> navController.navigate(AppDestination.TaskDetail.location(request.taskId)) { launchSingleTop = true }
+        }
+    }
     LaunchedEffect(taskNotice, taskNoticeMessage) {
         val notice = taskNotice ?: return@LaunchedEffect
         val message = taskNoticeMessage ?: return@LaunchedEffect
@@ -227,6 +257,7 @@ fun UthTodoApp(
                     onRefresh = { homeViewModel?.refresh() },
                     onToggle = { homeViewModel?.toggleDone(it) },
                     onSelectDate = { homeViewModel?.selectDate(it) },
+                    onNotifications = { navController.navigate(AppDestination.Notifications.route) { launchSingleTop = true } },
                     onCreateTask = {
                         if (navController.currentDestination?.route == AppDestination.Home.route && homeState?.changingTaskId == null)
                             navController.navigate(AppDestination.TaskCreate.location(TaskFilter.ALL, homeState?.selectedDate ?: TaskDates.today())) {
@@ -277,7 +308,19 @@ fun UthTodoApp(
                             }
                         }
                     },
+                    onNotifications = { navController.navigate(AppDestination.Notifications.route) { launchSingleTop = true } },
                 )
+            }
+            composable(AppDestination.Notifications.route) {
+                NotificationSettingsRoute(homeState ?: HomeUiState(), reminderState, reminderController,
+                    onBack = {
+                        if (!navController.popBackStack()) navController.navigate(AppDestination.Home.route) {
+                            popUpTo(navController.graph.id) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }, onRefresh = { homeViewModel?.refresh() },
+                    onOpenTask = { id -> navController.navigate(AppDestination.TaskDetail.location(id)) { launchSingleTop = true } },
+                    onToggle = { homeViewModel?.toggleDone(it) }, showGeneralNotifications = servicesViewModel != null)
             }
             composable(AppDestination.TaskCreate.route, arguments = listOf(
                 navArgument(AppDestination.TaskCreate.CATEGORY_ARGUMENT) { type = NavType.StringType; defaultValue = TaskFilter.ALL.name },
@@ -344,7 +387,9 @@ fun UthTodoApp(
                     taskDataMode = homeState?.dataMode,
                     isChangingTaskData = homeState?.isChangingDataMode == true || homeState?.changingTaskId != null || homeState?.creation?.isSaving == true,
                     onTaskDataMode = { homeViewModel?.selectTaskDataMode(it) },
-                    hasUnsavedTaskChanges = homeState?.creation?.isDirty == true || homeState?.detail?.isDirty == true)
+                    hasUnsavedTaskChanges = homeState?.creation?.isDirty == true || homeState?.detail?.isDirty == true,
+                    showReminders = reminderController != null,
+                    onNotifications = { navController.navigate(AppDestination.Notifications.route) { launchSingleTop = true } })
             }
         }
     }

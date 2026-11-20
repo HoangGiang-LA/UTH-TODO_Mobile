@@ -3,6 +3,7 @@ package com.example.uth_todo
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -70,7 +71,9 @@ class OnboardingFlowTest {
     @After fun clearViewModels() { compose.runOnIdle { models.clear() } }
 
     private fun launchFlow(completed: Boolean = false, initialSession: AuthSession = AuthSession.SignedOut,
-        configured: Boolean = false, taskRepository: TaskRepository? = null, authRepository: AuthRepository? = null) {
+        configured: Boolean = false, taskRepository: TaskRepository? = null, authRepository: AuthRepository? = null,
+        reminders: com.example.uth_todo.notifications.TaskReminderController? = null,
+        reminderRequests: MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>? = null) {
         compose.setContent {
             navController = rememberNavController()
             val model = androidx.compose.runtime.remember {
@@ -80,9 +83,11 @@ class OnboardingFlowTest {
                 AuthViewModel(authRepository ?: UiAuthRepository(initialSession, configured)).also { models.put("auth", it) }
             }
             val home = androidx.compose.runtime.remember(taskRepository) {
-                taskRepository?.let { HomeViewModel(it).also { viewModel -> models.put("home", viewModel) } }
+                taskRepository?.let { HomeViewModel(it, reminders = reminders).also { viewModel -> models.put("home", viewModel) } }
             }
-            UTHTODOTheme { UthTodoApp(model, auth, navController, homeViewModel = home) }
+            val reminderRequest = reminderRequests?.collectAsState()?.value
+            UTHTODOTheme { UthTodoApp(model, auth, navController, homeViewModel = home, reminderController = reminders,
+                reminderOpenRequest = reminderRequest, onReminderRequestHandled = { reminderRequests?.value = null }) }
         }
         compose.waitUntil(6_000) {
             navController.currentDestination?.route ==
@@ -653,6 +658,145 @@ class OnboardingFlowTest {
         compose.onNodeWithTag("task_list_refresh").performScrollTo().performClick()
         compose.onNodeWithTag("list_task_1").assertDoesNotExist()
     }
+
+    @Test fun notificationsTabOpensSeparateScreenAndBackReturnsHome() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository())
+        compose.onNodeWithTag("task_tab_notifications").performClick()
+        compose.onNodeWithTag("notifications_title").assertIsDisplayed()
+        pressBack()
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+        compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
+    }
+
+    @Test fun listSearchAndCategorySurviveNotificationsAndBack() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository())
+        compose.onNodeWithTag("category_study").performScrollTo().performClick()
+        compose.onNodeWithTag("tasks_search").performTextInput("on chuong")
+        compose.onNodeWithTag("tasks_search").performImeAction()
+        compose.onNodeWithTag("task_tab_notifications").performClick()
+        compose.onNodeWithTag("notifications_title").assertIsDisplayed()
+        pressBack()
+        compose.onNodeWithTag("tasks_search").assertTextContains("on chuong")
+        compose.onNodeWithTag("task_filter_STUDY").assertIsSelected()
+    }
+
+    @Test fun reminderListOpensSavedTaskAndTestButtonUsesInjectedController() {
+        val storage = com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences())
+        kotlinx.coroutines.runBlocking {
+            storage.create("guest", com.example.uth_todo.model.TaskDraft.blank(TaskDates.nextDay(TaskDates.today()))
+                .copy(title = "Lau nha", time = "14:00", remind = true))
+        }
+        val reminders = UiReminderController()
+        val repository = com.example.uth_todo.data.tasks.SessionTaskRepository(storage, UiTaskRepository())
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = repository, reminders = reminders)
+        compose.onNodeWithTag("task_tab_notifications").performClick()
+        compose.onNodeWithTag("notifications_screen").performScrollToNode(hasTestTag("reminders_test"))
+        compose.onNodeWithTag("reminders_test").performClick()
+        compose.onNodeWithTag("reminders_test_result").performScrollTo().assertIsDisplayed()
+        compose.runOnIdle { assertEquals(1, reminders.testCalls) }
+        compose.onNodeWithTag("notifications_screen").performScrollToNode(hasTestTag("reminder_task_1"))
+        compose.onNodeWithTag("reminder_task_1").performClick()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Lau nha")
+        pressBack()
+        compose.onNodeWithTag("notifications_title").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun reminderOpenRequestLoadsTheCorrectTaskForTheActiveOwner() {
+        val storage = com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences())
+        kotlinx.coroutines.runBlocking { storage.create("guest", com.example.uth_todo.model.TaskDraft.blank().copy(title = "Lau nha")) }
+        val requests = MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>(null)
+        launchFlow(completed = true, initialSession = AuthSession.Guest,
+            taskRepository = com.example.uth_todo.data.tasks.SessionTaskRepository(storage, UiTaskRepository()), reminderRequests = requests)
+        compose.runOnIdle { requests.value = com.example.uth_todo.notifications.ReminderOpenRequest("guest", 1) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_detail_task_title").performScrollTo().assertTextEquals("Lau nha")
+        compose.runOnIdle { assertNull(requests.value) }
+    }
+
+    @Test fun reminderOpenRequestForDifferentOwnerDoesNotOpenTheirTask() {
+        val requests = MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>(null)
+        val storage = com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences())
+        launchFlow(completed = true, initialSession = AuthSession.Guest,
+            taskRepository = com.example.uth_todo.data.tasks.SessionTaskRepository(storage, UiTaskRepository()), reminderRequests = requests)
+        compose.runOnIdle { requests.value = com.example.uth_todo.notifications.ReminderOpenRequest(
+            com.example.uth_todo.data.tasks.TaskSessionScope.forUid("someone-else"), 1) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_detail_title").assertDoesNotExist()
+        compose.runOnIdle {
+            assertEquals(AppDestination.Home.route, navController.currentDestination?.route)
+            assertNull(requests.value)
+        }
+    }
+
+    @Test fun apiModeDoesNotShowPersonalRemindersOrOpenADeviceTaskFromNotification() {
+        val requests = MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>(null)
+        val storage = com.example.uth_todo.data.tasks.DeviceTaskStorage(MemoryPreferences())
+        kotlinx.coroutines.runBlocking {
+            storage.create("guest", com.example.uth_todo.model.TaskDraft.blank().copy(title = "Personal"))
+            storage.selectMode("guest", com.example.uth_todo.model.TaskDataMode.COURSE_API)
+        }
+        launchFlow(completed = true, initialSession = AuthSession.Guest,
+            taskRepository = com.example.uth_todo.data.tasks.SessionTaskRepository(storage, UiTaskRepository()), reminderRequests = requests)
+        compose.onNodeWithTag("task_tab_notifications").performClick()
+        compose.onNodeWithTag("notifications_screen").performScrollToNode(androidx.compose.ui.test.hasText(
+            InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.reminders_device_only)))
+        compose.onNodeWithTag("reminder_task_1").assertDoesNotExist()
+        compose.runOnIdle { requests.value = com.example.uth_todo.notifications.ReminderOpenRequest("guest", 1) }
+        compose.waitForIdle()
+        compose.onNodeWithTag("task_detail_title").assertDoesNotExist()
+        compose.runOnIdle { assertNull(requests.value) }
+    }
+
+    @Test fun losingSessionOnNotificationsClearsTheProtectedBackStack() {
+        val auth = UiAuthRepository(AuthSession.Guest, false)
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository(), authRepository = auth)
+        compose.onNodeWithTag("task_tab_notifications").performClick()
+        compose.onNodeWithTag("notifications_title").assertIsDisplayed()
+        compose.runOnIdle { auth.session.value = AuthSession.SignedOut }
+        compose.waitForIdle()
+        compose.onNodeWithTag("welcome_title").assertIsDisplayed()
+        compose.runOnIdle { assertNull(navController.previousBackStackEntry) }
+    }
+
+    @Test fun notificationPermissionCardKeepsTestDisabledUntilPermissionStateIsEnabled() {
+        var enableCalls = 0
+        var testCalls = 0
+        val state = MutableStateFlow(com.example.uth_todo.notifications.ReminderServiceState(available = true))
+        compose.setContent {
+            val service = state.collectAsState().value
+            UTHTODOTheme {
+                com.example.uth_todo.ui.notifications.NotificationsScreen(HomeUiState(), service,
+                    onBack = {}, onRefresh = {}, onEnable = { enableCalls++ }, onExact = {}, onTest = { testCalls++ },
+                    onOpenTask = {}, onToggle = {})
+            }
+        }
+        compose.onNodeWithTag("notifications_screen").performScrollToNode(hasTestTag("reminders_test"))
+        compose.onNodeWithTag("reminders_test").assertIsNotEnabled()
+        compose.onNodeWithTag("reminders_enable").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, enableCalls); state.value = state.value.copy(notificationsAllowed = true, exactAllowed = true) }
+        compose.onNodeWithTag("reminders_test").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(1, testCalls) }
+    }
+
+    @Test fun notificationsWithLargeFontCanScrollToTheTestAction() {
+        var tested = false
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                UTHTODOTheme {
+                    Box(Modifier.requiredSize(320.dp, 480.dp)) {
+                        com.example.uth_todo.ui.notifications.NotificationsScreen(HomeUiState(),
+                            com.example.uth_todo.notifications.ReminderServiceState(available = true, notificationsAllowed = true, exactAllowed = true),
+                            onBack = {}, onRefresh = {}, onEnable = {}, onExact = {}, onTest = { tested = true },
+                            onOpenTask = {}, onToggle = {})
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("notifications_screen").performScrollToNode(hasTestTag("reminders_test"))
+        compose.onNodeWithTag("reminders_test").assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(true, tested) }
+    }
 }
 
 private class MemoryPreferences(completed: Boolean = false) : DataStore<Preferences> {
@@ -680,6 +824,16 @@ private class StorageCourseRepository : TaskRepository {
         calls++
         throw com.example.uth_todo.model.TaskCreateFailure(com.example.uth_todo.model.TaskApiError.CREATE_MISMATCH, true)
     }
+}
+
+
+private class UiReminderController : com.example.uth_todo.notifications.TaskReminderController {
+    override val uiState = MutableStateFlow(com.example.uth_todo.notifications.ReminderServiceState(
+        available = true, notificationsAllowed = true, exactAllowed = true))
+    var testCalls = 0
+    override fun bindSession(session: AuthSession) = Unit
+    override fun refresh() = Unit
+    override fun sendTest() { testCalls++; uiState.value = uiState.value.copy(testResult = true) }
 }
 
 private class UiAuthRepository(initial: AuthSession, override val isConfigured: Boolean) : AuthRepository {

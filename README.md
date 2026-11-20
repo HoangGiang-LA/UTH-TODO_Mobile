@@ -11,15 +11,17 @@
 | Danh sách | Commit `4d0d14e`, người dùng xác nhận đã test/push |
 | Chi tiết | Commit `b27f9d3`, người dùng xác nhận đã test/push |
 | Tạo mới/API | Commit nguồn `f099f0c`; người dùng phát hiện tạo “Lau nha” nhận công việc khác, chưa nghiệm thu lưu qua API |
-| Lưu công việc trên thiết bị | Đã triển khai CRUD lưu bền và lựa chọn dữ liệu mẫu riêng; test file thật đạt, chờ build/chạy trên thiết bị |
+| Lưu công việc trên thiết bị | Commit `59457c8`; CRUD lưu bền, tách dữ liệu mẫu và sửa lỗi ghi đồng thời Windows |
+| Thông báo nhắc giờ | Màn hình Thông báo, lịch nhắc/hủy/khôi phục và mở đúng task; đã triển khai, chờ kiểm tra quyền/chuông trên thiết bị |
 
-Xem [báo cáo lưu công việc](docs/TASK-PERSISTENCE-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), báo cáo [Tạo mới](docs/TASK-CREATE-REPORT.md), [Chi tiết](docs/TASK-DETAIL-REPORT.md), [Danh sách](docs/TASK-LIST-REPORT.md), [BTVN 04](docs/BTVN04-REPORT.md), [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
+Xem [báo cáo nhắc công việc](docs/TASK-REMINDERS-REPORT.md), [báo cáo lưu công việc](docs/TASK-PERSISTENCE-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), báo cáo [Tạo mới](docs/TASK-CREATE-REPORT.md), [Chi tiết](docs/TASK-DETAIL-REPORT.md), [Danh sách](docs/TASK-LIST-REPORT.md), [BTVN 04](docs/BTVN04-REPORT.md), [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
 
 ## Chạy bản hiện tại
 
-Tiếp tục trên `feature/task-create-api`, base `f099f0c`. Agent chưa stage/commit/push/chuyển nhánh.
+Base `59457c8`. Mã nhắc giờ hiện ở working tree trên `feature/task-create-api`; người dùng tự tạo nhánh `feature/task-reminders` trước khi chốt. Agent chưa stage/commit/push/chuyển nhánh.
 
 ```powershell
+git switch -c feature/task-reminders
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
@@ -48,7 +50,19 @@ Task trên thiết bị dùng ID do kho lưu cấp trong cùng giao dịch với
 - Chi tiết đọc theo ID từ kho đang chọn, sửa thông tin và việc nhỏ, hoàn thành, xóa có xác nhận.
 - Nút + mở form tạo mới, nhận ngày từ Home hoặc nhóm từ List. Lỗi giữ draft; không báo thành công trước khi nguồn dữ liệu xác nhận.
 - Lỗi dữ liệu/file lưu không bị biến thành danh sách rỗng và không tự xóa file để xử lý.
-- remind được lưu cùng task; lập lịch thông báo theo ngày/giờ chưa triển khai. Chuông mở quyền FCM hiện có.
+- Bật remind cần đủ ngày và giờ; việc chưa xong trên thiết bị được nhắc trước hạn 15 phút, hoặc vào hạn chót nếu còn dưới 15 phút khi tạo lịch. Hoàn thành/xóa/tắt nhắc/đổi phiên hoặc nguồn sẽ hủy lịch tương ứng.
+- Chuông, thanh Thông báo và nút Nhắc công việc ở Hồ sơ mở màn hình Thông báo riêng. Có bật quyền, nhắc đúng giờ, gửi thông báo thử và danh sách việc đã bật nhắc.
+
+## Nhắc công việc theo giờ
+
+Nhắc giờ dùng AlarmManager và dữ liệu đã lưu trên thiết bị. Không đặt lịch cho dữ liệu mẫu API hoặc phụ thuộc FCM/mạng.
+
+1. Mở Thông báo → Bật thông báo, cho phép trên Android.
+2. Bấm Cho phép nhắc đúng giờ nếu có, bật quyền trong cài đặt Android rồi quay lại app. Khi thiếu quyền này, lịch vẫn có thể dùng chế độ gần đúng; Android có thể gửi muộn.
+3. Bấm Gửi thông báo thử để kiểm tra kênh. Tạo/sửa việc có ngày/giờ tương lai và bật Nhắc nhở.
+4. Bấm thông báo để mở Chi tiết đúng ID trong cùng Guest/UID và nguồn thiết bị. Nếu chưa đăng nhập, cần dùng lại đúng tài khoản hoặc chế độ Khách; app không tự đổi phiên/nguồn.
+
+Registry lưu scope/ID/thời điểm và dấu đã gửi, không ghi nội dung task vào alarm Intent. Receiver đọc lại task đã lưu trước khi hiển thị, gửi một lần cho mỗi hạn chót. Khôi phục lịch khi reboot, cập nhật app, đổi giờ/múi giờ hoặc cấp quyền nhắc đúng giờ; mở app/quay lại màn hình quyền cũng cập nhật lịch. Force-stop/tắt quyền và chính sách pin có thể ảnh hưởng giao nhận; chưa nghiệm thu các tình huống OS trong môi trường agent.
 
 ## API bài tập
 
@@ -74,13 +88,13 @@ Không đổi Firebase rules hoặc tạo kho task RTDB trong mốc này. Chưa 
 
 | Kiểm tra trong môi trường agent | Kết quả |
 |---|---|
-| Kotlin 2.2.10/JUnit chạy riêng với thư viện thực có sẵn | 114/114 đạt: toàn bộ test JUnit hiện có, gồm 13 test lưu bền/nguồn dữ liệu |
-| File DataStore thật | Đạt tạo/đóng/mở lại, nhiều lần sửa/xóa, 20 tạo đồng thời; nhóm 13 test đạt 25 lượt liên tiếp sau sửa lỗi Windows |
-| Biên dịch 61 source Kotlin/Compose với header R/BuildConfig kiểm tra nguồn | Đạt; chưa phải APK/Gradle |
-| Mã Android test | 36 test biên dịch đạt, gồm 4 test mới cho lưu thiết bị/chuyển nguồn; chưa chạy trên thiết bị |
+| Kotlin 2.2.10/JUnit chạy riêng với thư viện thực có sẵn | 137/137 đạt: 114 hồi quy + 22 planner/engine/session + 1 tương thích task nhắc cũ |
+| File DataStore thật | Đạt tạo/đóng/mở lại, nhiều lần sửa/xóa, 20 tạo đồng thời và task nhắc cũ chưa đủ ngày/giờ |
+| Biên dịch 71 source Kotlin/Compose với header R/BuildConfig kiểm tra nguồn | Đạt; chưa phải APK/Gradle |
+| Mã Android test | 45 test biên dịch đạt, gồm 9 test Thông báo/Back/quyền/mở task mới; chưa chạy trên thiết bị |
 | AAPT2 compile resources và git diff --check | Đạt |
 | assembleDebug/testDebugUnitTest/lintDebug qua wrapper | Bị chặn quyền mở file khóa wrapper, chưa chạy task |
-| UI thật/connectedDebugAndroidTest/live API | Chưa chạy trong môi trường agent |
+| UI thật/quyền AlarmManager/chuông/reboot/connectedDebugAndroidTest/live API | Chưa chạy trong môi trường agent |
 
 Đã tái hiện lỗi AccessDeniedException khi Windows thay file preferences trong test đồng thời; DeviceTaskStorage dùng Mutex để xếp hàng cả đọc/mode/ghi, giữ nguyên test 20 create. TaskApiFailure giữ cause để báo cáo lỗi có nguyên nhân gốc. Cảnh báo Unsafe không phải nguyên nhân dừng build trong báo cáo này.
 
@@ -96,9 +110,10 @@ Còn cảnh báo deprecation createComposeRule có sẵn. Kết quả test ngu�
 | `model/` | Session, task/draft/validation, lựa chọn dữ liệu |
 | `data/tasks/` | DataStore, factory một instance/file, phân vùng phiên, repository API, tìm kiếm/ngày/thống kê |
 | `data/auth/`, `data/preferences/` | Firebase Auth/Credentials và onboarding |
-| `data/firebase/`, `notifications/` | Hồ sơ, Remote Config/telemetry và FCM |
+| `data/firebase/`, `notifications/` | Hồ sơ/telemetry, FCM, planner/engine, AlarmManager/receivers và registry nhắc |
 | `ui/home/` | State dùng chung task, điều phối đọc/ghi và đổi nguồn |
 | `ui/tasklist/`, `ui/taskdetail/`, `ui/taskcreate/` | Các flow công việc |
+| `ui/notifications/` | Màn hình Thông báo và yêu cầu quyền Android theo thao tác người dùng |
 | `ui/profile/`, `ui/components/` | Hồ sơ, chọn dữ liệu, thông báo quyền, form và thành phần chung |
 | `ui/onboarding/`, `ui/splash/`, `ui/welcome/`, `ui/auth/`, `ui/theme/` | Khởi động/đăng nhập/theme |
 
