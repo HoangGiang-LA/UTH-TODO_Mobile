@@ -22,7 +22,6 @@ import com.example.uth_todo.ui.components.PrimaryButton
 import com.example.uth_todo.ui.components.TaskBottomBar
 import com.example.uth_todo.ui.components.TaskTab
 import com.example.uth_todo.ui.components.TaskStorageNotice
-import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +37,7 @@ fun HomeScreen(
     onToggle: (Long) -> Unit = {},
     onSelectDate: (String) -> Unit = {},
     onCreateTask: () -> Unit = {},
+    onNotifications: () -> Unit = {},
 ) {
     val user = (session as? AuthSession.SignedIn)?.user
     val name = displayName?.takeIf { it.isNotBlank() } ?: user?.displayName?.takeIf { it.isNotBlank() }
@@ -46,7 +46,6 @@ fun HomeScreen(
     val summary = remember(state.tasks, state.selectedDate) { state.tasks.summary(state.selectedDate) }
     val dayTasks = remember(state.tasks, state.selectedDate) { state.tasks.forDate(state.selectedDate) }
     var showDate by rememberSaveable { mutableStateOf(false) }
-    var showNotifications by rememberSaveable { mutableStateOf(false) }
     val isToday = state.selectedDate == TaskDates.today()
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -65,7 +64,7 @@ fun HomeScreen(
                     Text(stringResource(R.string.home_greeting, name), style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.testTag("home_title"))
                 }
-                IconButton(onClick = { showNotifications = true },
+                IconButton(onClick = onNotifications,
                     modifier = Modifier.semanticsLabel(stringResource(R.string.notifications_title))) { HomeGlyph(HomeIcon.BELL) }
             }
             if (!announcement.isNullOrBlank()) Card(Modifier.fillMaxWidth().testTag("home_announcement")) {
@@ -113,7 +112,7 @@ fun HomeScreen(
             Spacer(Modifier.height(8.dp))
         }
         TaskBottomBar(TaskTab.HOME, onHome = {}, onList = { onOpenList(TaskFilter.ALL) },
-            onNotifications = { showNotifications = true }, onProfile = onProfile, onAdd = onCreateTask)
+            onNotifications = onNotifications, onProfile = onProfile, onAdd = onCreateTask)
     }
     if (showDate) {
         val picker = rememberDatePickerState(initialSelectedDateMillis = TaskDates.toUtcMillis(state.selectedDate))
@@ -124,9 +123,6 @@ fun HomeScreen(
         }, dismissButton = { TextButton(onClick = { showDate = false }) { Text(stringResource(R.string.cancel_action)) } }) {
             DatePicker(picker, showModeToggle = false)
         }
-    }
-    if (showNotifications) ModalBottomSheet(onDismissRequest = { showNotifications = false }) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) { NotificationPreferenceCard() }
     }
 }
 

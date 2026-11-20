@@ -7,9 +7,14 @@ import androidx.datastore.preferences.preferencesDataStoreFile
 
 private object AndroidTaskStorage {
     private var store: DataStore<Preferences>? = null
+    private var storage: DeviceTaskStorage? = null
     @Synchronized fun get(context: Context): DataStore<Preferences> = store
         ?: createTaskPreferencesStore(context.applicationContext.preferencesDataStoreFile("personal_tasks")).also { store = it }
+    @Synchronized fun storage(context: Context): DeviceTaskStorage = storage
+        ?: DeviceTaskStorage(get(context)).also { storage = it }
 }
 
+fun androidDeviceTaskStorage(context: Context): DeviceTaskStorage = AndroidTaskStorage.storage(context)
+
 fun androidTaskRepository(context: Context, mockToken: String): SessionTaskRepository =
-    SessionTaskRepository(DeviceTaskStorage(AndroidTaskStorage.get(context)), MockTaskRepository(mockToken))
+    SessionTaskRepository(androidDeviceTaskStorage(context), MockTaskRepository(mockToken))

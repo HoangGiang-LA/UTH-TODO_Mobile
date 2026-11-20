@@ -127,4 +127,5 @@ fun TaskEditError.messageResource(): Int = when (this) {
     TaskEditError.TIME -> R.string.task_error_time
     TaskEditError.PRIORITY -> R.string.task_error_priority
     TaskEditError.SUBTASK -> R.string.task_error_subtask
+    TaskEditError.REMINDER_SCHEDULE -> R.string.task_error_reminder_schedule
 }

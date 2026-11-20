@@ -6,6 +6,8 @@ import com.example.uth_todo.model.*
 import com.google.gson.GsonBuilder
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -14,6 +16,8 @@ class DeviceTaskStorage(private val dataStore: DataStore<Preferences>) {
     // Keep reads (including mode selection) and writes in one queue. In particular,
     // a Windows reader must finish before DataStore replaces the preferences file.
     private val access = Mutex()
+    private val mutableChanges = MutableStateFlow(0L)
+    val changes = mutableChanges.asStateFlow()
     private val decoder = TaskJsonDecoder()
     private val gson = GsonBuilder().serializeNulls().create()
 
@@ -24,6 +28,7 @@ class DeviceTaskStorage(private val dataStore: DataStore<Preferences>) {
 
     suspend fun selectMode(scope: String, mode: TaskDataMode) = storageOperation {
         dataStore.edit { it[modeKey(scope)] = mode.name }
+        mutableChanges.value++
         Unit
     }
 
@@ -49,6 +54,7 @@ class DeviceTaskStorage(private val dataStore: DataStore<Preferences>) {
             created = task
         }
         requireNotNull(created)
+            .also { mutableChanges.value++ }
     }
 
     suspend fun update(scope: String, id: Long, transform: (TodoTask) -> TodoTask) = storageOperation {
@@ -56,9 +62,12 @@ class DeviceTaskStorage(private val dataStore: DataStore<Preferences>) {
             val tasks = decode(prefs[tasksKey(scope)])
             val original = tasks.firstOrNull { it.id == id } ?: throw TaskApiFailure(TaskApiError.NOT_FOUND)
             val updated = transform(original)
-            require(updated.id == id && TaskDraft.from(updated).validationError() == null)
+            // Older app versions allowed remind=true without a date/time. Quick
+            // completion/subtask updates must still work; the editor validates new schedules.
+            require(updated.id == id && TaskDraft.from(updated).copy(remind = false).validationError() == null)
             prefs[tasksKey(scope)] = encode(tasks.map { if (it.id == id) updated else it })
         }
+        mutableChanges.value++
         Unit
     }
 
@@ -68,6 +77,7 @@ class DeviceTaskStorage(private val dataStore: DataStore<Preferences>) {
             if (tasks.none { it.id == id }) throw TaskApiFailure(TaskApiError.NOT_FOUND)
             prefs[tasksKey(scope)] = encode(tasks.filterNot { it.id == id })
         }
+        mutableChanges.value++
         Unit
     }
 

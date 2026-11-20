@@ -1,7 +1,6 @@
 package com.example.uth_todo.data.tasks
 
 import com.example.uth_todo.model.*
-import java.security.MessageDigest
 
 /** Device data and course API samples are separate datasets; never merge or silently fall back. */
 class SessionTaskRepository(
@@ -12,12 +11,7 @@ class SessionTaskRepository(
     override val isConfigured = true
 
     override fun bindSession(session: AuthSession) {
-        scope = when (session) {
-            AuthSession.Guest -> "guest"
-            is AuthSession.SignedIn -> "user_" + MessageDigest.getInstance("SHA-256")
-                .digest(session.user.uid.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it.toInt() and 255) }
-            else -> null
-        }
+        scope = TaskSessionScope.from(session)
     }
 
     private fun sessionScope(): String = scope ?: throw TaskApiFailure(TaskApiError.UNAUTHORIZED)

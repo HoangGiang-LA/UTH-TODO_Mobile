@@ -31,7 +31,6 @@ import com.example.uth_todo.ui.components.TaskBottomBar
 import com.example.uth_todo.ui.components.TaskTab
 import com.example.uth_todo.ui.components.TaskStorageNotice
 import com.example.uth_todo.ui.home.*
-import com.example.uth_todo.ui.profile.NotificationPreferenceCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,10 +46,10 @@ fun TaskListScreen(
     onProfile: () -> Unit,
     onOpenTask: (Long) -> Unit = {},
     onCreateTask: () -> Unit = {},
+    onNotifications: () -> Unit = {},
 ) {
     val content = remember(tasksState.tasks, listState) { listState.content(tasksState.tasks) }
     val scroll = rememberLazyListState()
-    var showNotifications by rememberSaveable { mutableStateOf(false) }
     val refreshLabel = stringResource(R.string.tasks_refresh)
     val clearLabel = stringResource(R.string.tasks_clear_search)
     val today = TaskDates.today()
@@ -146,12 +145,9 @@ fun TaskListScreen(
             }
         }
         TaskBottomBar(TaskTab.LIST, onHome = { focus.clearFocus(); onHome() }, onList = {},
-            onNotifications = { focus.clearFocus(); showNotifications = true },
+            onNotifications = { focus.clearFocus(); onNotifications() },
             onProfile = { focus.clearFocus(); onProfile() },
             onAdd = { focus.clearFocus(); onCreateTask() })
-    }
-    if (showNotifications) ModalBottomSheet(onDismissRequest = { showNotifications = false }) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(20.dp)) { NotificationPreferenceCard() }
     }
 }
 

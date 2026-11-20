@@ -2,7 +2,7 @@ package com.example.uth_todo.model
 
 import com.example.uth_todo.data.tasks.TaskDates
 
-enum class TaskEditError { TITLE, CATEGORY, DATE, TIME, PRIORITY, SUBTASK }
+enum class TaskEditError { TITLE, CATEGORY, DATE, TIME, PRIORITY, SUBTASK, REMINDER_SCHEDULE }
 
 data class TaskDraft(
     val title: String,
@@ -19,6 +19,7 @@ data class TaskDraft(
         category == TaskCategory.OTHER -> TaskEditError.CATEGORY
         date.isNotBlank() && !TaskDates.isValidDate(date.trim()) -> TaskEditError.DATE
         time.isNotBlank() && !TaskDates.isValidTime(time.trim()) -> TaskEditError.TIME
+        remind && (date.isBlank() || time.isBlank()) -> TaskEditError.REMINDER_SCHEDULE
         priority == TaskPriority.OTHER -> TaskEditError.PRIORITY
         subtasks.any { it.title.isBlank() } -> TaskEditError.SUBTASK
         else -> null

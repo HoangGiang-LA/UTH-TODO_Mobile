@@ -2,6 +2,8 @@
 
 Ngày: 20/11/2026. Base `f099f0c`, tiếp tục trên `feature/task-create-api`.
 
+**Mốc đã chốt:** commit `59457c8` trên `feature/task-create-api`. Người dùng đã yêu cầu tiếp tục mốc nhắc giờ; xem [TASK-REMINDERS-REPORT.md](TASK-REMINDERS-REPORT.md). Nội dung bên dưới lưu phạm vi và bằng chứng của mốc lưu thiết bị, chưa phải kết quả kiểm thử quyền/chuông Android ở mốc mới.
+
 ## Kết quả triển khai
 
 Bổ sung kho lưu thật trên thiết bị cho flow tạo/đọc/sửa/hoàn thành/việc nhỏ/xóa. Mặc định app dùng kho này để công việc tự nhập không phụ thuộc response mẫu của mock. API bài tập vẫn có đầy đủ repository HTTP ở lựa chọn dữ liệu riêng.

@@ -146,6 +146,22 @@ class TaskPersistenceTest {
         assertTrue(repo.loadTasks().isEmpty())
     }
 
+    @Test fun legacyReminderWithoutDateOrTimeCanStillBeCompletedAndHaveSubtasksUpdated() = runTest(dispatcher) {
+        val prefs = TaskMemoryPreferences()
+        prefs.updateData { it.toMutablePreferences().apply {
+            this[stringPreferencesKey("tasks_guest")] = """[{"id":1,"title":"Lau nha","category":"life","date":null,"time":null,"done":false,"remind":true}]"""
+        } }
+        val repo = repository(prefs)
+        repo.bindSession(AuthSession.Guest)
+        repo.setDone(1, true)
+        repo.setSubtasks(1, listOf(TodoSubtask("Quét nhà", true)))
+        val task = repo.loadTask(1)
+        assertTrue(task.done)
+        assertTrue(task.subtasks.single().done)
+        assertNull(task.date)
+        assertNull(task.time)
+    }
+
     @Test fun signedOutRepositoryCannotReadOrWriteAnotherSessionsTasks() = runTest(dispatcher) {
         val repo = repository(TaskMemoryPreferences())
         repo.bindSession(AuthSession.Guest); repo.createTask(draft())
