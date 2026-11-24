@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.WindowInsets
@@ -62,6 +63,9 @@ import com.example.uth_todo.ui.onboarding.OnboardingScreen
 import com.example.uth_todo.ui.onboarding.OnboardingViewModel
 import com.example.uth_todo.ui.onboarding.PreferencesError
 import com.example.uth_todo.ui.splash.SplashScreen
+import com.example.uth_todo.ui.settings.AppearanceScreen
+import com.example.uth_todo.ui.settings.AppearanceViewModel
+import com.example.uth_todo.ui.settings.AppearanceUiState
 import com.example.uth_todo.ui.welcome.WelcomeScreen
 
 @Composable
@@ -74,7 +78,9 @@ fun UthTodoApp(
     reminderController: TaskReminderController? = null,
     reminderOpenRequest: ReminderOpenRequest? = null,
     onReminderRequestHandled: () -> Unit = {},
+    appearanceViewModel: AppearanceViewModel? = null,
 ) {
+    val appearanceState = appearanceViewModel?.uiState?.collectAsStateWithLifecycle()?.value
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
     val servicesState = servicesViewModel?.uiState?.collectAsStateWithLifecycle()?.value
@@ -149,11 +155,12 @@ fun UthTodoApp(
         route?.let { servicesViewModel?.screenOpened(it) }
     }
 
+    val lightSystemIcons = splashVisible || MaterialTheme.colorScheme.background.luminance() < 0.5f
     SideEffect {
         (context as? ComponentActivity)?.enableEdgeToEdge(
-            statusBarStyle = if (splashVisible) SystemBarStyle.dark(Color.Transparent.toArgb())
+            statusBarStyle = if (lightSystemIcons) SystemBarStyle.dark(Color.Transparent.toArgb())
                 else SystemBarStyle.light(Color.Transparent.toArgb(), Color.Transparent.toArgb()),
-            navigationBarStyle = if (splashVisible) SystemBarStyle.dark(Color.Transparent.toArgb())
+            navigationBarStyle = if (lightSystemIcons) SystemBarStyle.dark(Color.Transparent.toArgb())
                 else SystemBarStyle.light(Color.Transparent.toArgb(), Color.Transparent.toArgb()),
         )
     }
@@ -373,6 +380,12 @@ fun UthTodoApp(
                     onSave = { homeViewModel?.saveTaskEdit() }, onToggle = { homeViewModel?.toggleDetailDone() },
                     onSubtask = { homeViewModel?.toggleSubtask(it) }, onDelete = { homeViewModel?.deleteTask() })
             }
+            composable(AppDestination.Appearance.route) {
+                AppearanceScreen(appearanceState ?: AppearanceUiState(),
+                    onBack = {
+                        if (!navController.popBackStack()) navController.navigate(AppDestination.Home.route) { launchSingleTop = true }
+                    }, onMode = { appearanceViewModel?.select(it) }, onRetry = { appearanceViewModel?.retryRead() })
+            }
             composable(AppDestination.Profile.route) {
                 ProfileScreen(authState.session, authState.isBusy,
                     onBack = { navController.popBackStack() }, onSignOut = authViewModel::signOut,
@@ -389,6 +402,8 @@ fun UthTodoApp(
                     onTaskDataMode = { homeViewModel?.selectTaskDataMode(it) },
                     hasUnsavedTaskChanges = homeState?.creation?.isDirty == true || homeState?.detail?.isDirty == true,
                     showReminders = reminderController != null,
+                    showAppearance = appearanceViewModel != null,
+                    onAppearance = { navController.navigate(AppDestination.Appearance.route) { launchSingleTop = true } },
                     onNotifications = { navController.navigate(AppDestination.Notifications.route) { launchSingleTop = true } })
             }
         }

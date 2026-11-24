@@ -40,7 +40,6 @@ import com.example.uth_todo.R
 import com.example.uth_todo.model.OnboardingIllustration
 import com.example.uth_todo.ui.theme.UthBlue
 import com.example.uth_todo.ui.theme.UthGreen
-import com.example.uth_todo.ui.theme.UthLavender
 
 private enum class ArtworkIcon { CHECK, BOOK, HOME, BELL }
 
@@ -74,7 +73,7 @@ private fun ArtworkFrame(content: @Composable androidx.compose.foundation.layout
         val scale = (maxWidth / 320.dp).coerceAtMost(1f)
         Box(Modifier.fillMaxWidth().height(270.dp * scale), contentAlignment = Alignment.Center) {
             Box(Modifier.requiredSize(320.dp, 270.dp).graphicsLayer { scaleX = scale; scaleY = scale }) {
-                Box(Modifier.align(Alignment.Center).size(254.dp).background(UthLavender, CircleShape))
+                Box(Modifier.align(Alignment.Center).size(254.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape))
                 Box(Modifier.offset(28.dp, 38.dp).size(10.dp).background(UthBlue.copy(alpha = 0.25f), CircleShape))
                 Box(Modifier.align(Alignment.BottomEnd).offset((-34).dp, (-24).dp)
                     .size(14.dp).background(UthGreen.copy(alpha = 0.35f), CircleShape))
@@ -91,18 +90,18 @@ private fun TaskCards() {
         Surface(
             modifier = Modifier.offset((32 + index * 10).dp, (38 + index * 64).dp)
                 .requiredSize(242.dp, 66.dp).graphicsLayer { rotationZ = if (index == 1) 3f else -5f },
-            shape = RoundedCornerShape(16.dp), shadowElevation = 8.dp, color = Color.White,
+            shape = RoundedCornerShape(16.dp), shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface,
         ) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                Box(Modifier.size(32.dp).background(if (index == 0) UthBlue else UthLavender, RoundedCornerShape(10.dp)),
+                Box(Modifier.size(32.dp).background(if (index == 0) UthBlue else MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center) {
-                    ArtworkSymbol(ArtworkIcon.CHECK, if (index == 0) Color.White else UthBlue, Modifier.size(20.dp))
+                    ArtworkSymbol(ArtworkIcon.CHECK, if (index == 0) Color.White else MaterialTheme.colorScheme.onPrimaryContainer, Modifier.size(20.dp))
                 }
                 Column(Modifier.weight(1f)) {
                     Text(stringResource(title), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     Spacer(Modifier.height(6.dp))
-                    Box(Modifier.fillMaxWidth(0.65f).height(5.dp).background(UthLavender, CircleShape))
+                    Box(Modifier.fillMaxWidth(0.65f).height(5.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape))
                 }
             }
         }
@@ -111,23 +110,23 @@ private fun TaskCards() {
 
 @Composable
 private fun CategoryCards() {
-    CategoryCard(R.string.category_study, ArtworkIcon.BOOK, UthBlue,
+    CategoryCard(R.string.category_study, ArtworkIcon.BOOK, MaterialTheme.colorScheme.primary,
         Modifier.offset(20.dp, 52.dp).graphicsLayer { rotationZ = -9f })
-    CategoryCard(R.string.category_life, ArtworkIcon.HOME, UthGreen,
+    CategoryCard(R.string.category_life, ArtworkIcon.HOME, MaterialTheme.colorScheme.secondary,
         Modifier.offset(164.dp, 100.dp).graphicsLayer { rotationZ = 8f })
 }
 
 @Composable
 private fun CategoryCard(title: Int, icon: ArtworkIcon, color: Color, modifier: Modifier) {
     Surface(modifier.requiredSize(136.dp, 148.dp), shape = RoundedCornerShape(22.dp),
-        shadowElevation = 8.dp, color = Color.White) {
+        shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Box(Modifier.size(48.dp).background(color.copy(alpha = 0.12f), RoundedCornerShape(15.dp)),
                 contentAlignment = Alignment.Center) {
                 ArtworkSymbol(icon, color, Modifier.size(28.dp))
             }
             Text(stringResource(title), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
-            Box(Modifier.fillMaxWidth(0.7f).height(5.dp).background(UthLavender, CircleShape))
+            Box(Modifier.fillMaxWidth(0.7f).height(5.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape))
         }
     }
 }
@@ -139,11 +138,11 @@ private fun ReminderCard() {
         ArtworkSymbol(ArtworkIcon.BELL, Color.White, Modifier.size(58.dp))
     }
     Surface(Modifier.offset(22.dp, 163.dp).requiredSize(276.dp, 78.dp),
-        shape = RoundedCornerShape(18.dp), shadowElevation = 8.dp, color = Color.White) {
+        shape = RoundedCornerShape(18.dp), shadowElevation = 8.dp, color = MaterialTheme.colorScheme.surface) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(42.dp).background(UthLavender, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                ArtworkSymbol(ArtworkIcon.BELL, UthBlue, Modifier.size(26.dp))
+            Box(Modifier.size(42.dp).background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                ArtworkSymbol(ArtworkIcon.BELL, MaterialTheme.colorScheme.onPrimaryContainer, Modifier.size(26.dp))
             }
             Column {
                 Text(stringResource(R.string.sample_reminder_title), fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)

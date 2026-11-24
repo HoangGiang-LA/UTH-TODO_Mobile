@@ -46,6 +46,8 @@ fun ProfileScreen(
     hasUnsavedTaskChanges: Boolean = false,
     showReminders: Boolean = false,
     onNotifications: () -> Unit = {},
+    showAppearance: Boolean = false,
+    onAppearance: () -> Unit = {},
 ) {
     val user = (session as? AuthSession.SignedIn)?.user
     val missing = stringResource(R.string.profile_not_provided)
@@ -76,6 +78,9 @@ fun ProfileScreen(
                 if (servicesState != null) {
                     CloudProfileEditor(servicesState, user.displayName.orEmpty(), onSaveName, onRetryProfile, onNameEdited)
                 }
+            }
+            if (showAppearance) TextButton(onClick = onAppearance, modifier = Modifier.testTag("profile_appearance")) {
+                Text(stringResource(R.string.appearance_title))
             }
             if (showTaskStorage) TaskStorageSettingsCard(taskDataMode, isChangingTaskData || isBusy, onTaskDataMode, hasUnsavedTaskChanges)
             if (showNotifications) NotificationPreferenceCard()

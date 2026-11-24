@@ -42,7 +42,6 @@ import com.example.uth_todo.model.OnboardingPage
 import com.example.uth_todo.ui.components.BrandHeader
 import com.example.uth_todo.ui.components.OnboardingArtwork
 import com.example.uth_todo.ui.components.PrimaryButton
-import com.example.uth_todo.ui.theme.UthBlue
 import kotlinx.coroutines.launch
 
 @Composable
@@ -126,7 +125,7 @@ private fun PageIndicator(currentPage: Int, pageCount: Int) {
         repeat(pageCount) { index ->
             val width by animateDpAsState(if (currentPage == index) 26.dp else 8.dp, label = "page_dot")
             Box(Modifier.size(width, 8.dp).background(
-                if (currentPage == index) UthBlue else UthBlue.copy(alpha = 0.16f), CircleShape))
+                if (currentPage == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), CircleShape))
         }
     }
 }

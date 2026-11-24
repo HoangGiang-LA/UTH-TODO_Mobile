@@ -226,4 +226,16 @@
     <string name="reminders_wrong_owner">Thông báo thuộc phiên dùng khác. Hãy dùng đúng tài khoản hoặc chế độ Khách để mở công việc.</string>
     <string name="reminders_choose_device">Hãy chọn Công việc trên thiết bị trong Hồ sơ rồi mở lại thông báo.</string>
     <string name="reminder_due_message">Hạn chót: %1$s</string>
+    <string name="appearance_title">Giao diện</string>
+    <string name="appearance_description">Chọn giao diện phù hợp với bạn.</string>
+    <string name="appearance_system">Theo hệ thống</string>
+    <string name="appearance_light">Sáng</string>
+    <string name="appearance_dark">Tối</string>
+    <string name="appearance_system_description">Tự đổi theo chế độ sáng hoặc tối của thiết bị.</string>
+    <string name="appearance_light_description">Nền sáng, chữ tối.</string>
+    <string name="appearance_dark_description">Nền tối, chữ sáng.</string>
+    <string name="appearance_applies_everywhere">Lựa chọn áp dụng cho toàn bộ ứng dụng và được giữ khi mở lại.</string>
+    <string name="appearance_saving">Đang lưu giao diện…</string>
+    <string name="appearance_read_error">Chưa đọc được giao diện đã lưu. Đang dùng giao diện theo hệ thống. Bạn có thể thử lại hoặc chọn giao diện mới.</string>
+    <string name="appearance_save_error">Chưa lưu được giao diện. Lựa chọn trước vẫn được giữ. Hãy thử chọn lại.</string>
 </resources>

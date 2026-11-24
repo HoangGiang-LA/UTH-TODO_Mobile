@@ -10,9 +10,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.uth_todo.data.preferences.OnboardingPreferences
+import com.example.uth_todo.data.preferences.AppearancePreferences
+import com.example.uth_todo.ui.settings.AppearanceViewModel
 import com.example.uth_todo.data.auth.FirebaseAuthRepository
 import com.example.uth_todo.data.firebase.FirebaseHomeConfigRepository
 import com.example.uth_todo.data.firebase.FirebaseProfileRepository
@@ -42,12 +46,13 @@ class MainActivity : ComponentActivity() {
         readReminderIntent(intent)
     }
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         readReminderIntent(intent)
         val reminders = TaskReminderRuntime.get(applicationContext)
         val appFactory = viewModelFactory {
+            initializer { AppearanceViewModel(AppearancePreferences(applicationContext)) }
             initializer { OnboardingViewModel(OnboardingPreferences(applicationContext)) }
             initializer { AuthViewModel(FirebaseAuthRepository(applicationContext)) }
             initializer { HomeViewModel(androidTaskRepository(applicationContext, BuildConfig.MOCK_API_TOKEN), reminders = reminders) }
@@ -57,13 +62,17 @@ class MainActivity : ComponentActivity() {
                     FirebaseHomeConfigRepository(applicationContext, telemetry), telemetry)
             }
         }
+        val appearanceViewModel = ViewModelProvider(this, appFactory)[AppearanceViewModel::class.java]
+        // The preference read has a timeout, so this cannot hold startup indefinitely.
+        splash.setKeepOnScreenCondition { appearanceViewModel.uiState.value.isLoading }
         setContent {
-            UTHTODOTheme {
+            val appearance by appearanceViewModel.uiState.collectAsStateWithLifecycle()
+            UTHTODOTheme(mode = appearance.mode) {
                 val onboardingViewModel: OnboardingViewModel = viewModel(factory = appFactory)
                 val authViewModel: AuthViewModel = viewModel(factory = appFactory)
                 val servicesViewModel: FirebaseServicesViewModel = viewModel(factory = appFactory)
                 val homeViewModel: HomeViewModel = viewModel(factory = appFactory)
-                UthTodoApp(onboardingViewModel, authViewModel = authViewModel,
+                UthTodoApp(onboardingViewModel, authViewModel = authViewModel, appearanceViewModel = appearanceViewModel,
                     servicesViewModel = servicesViewModel, homeViewModel = homeViewModel, reminderController = reminders,
                     reminderOpenRequest = reminderRequest, onReminderRequestHandled = {
                         reminderRequest = null
