@@ -83,7 +83,8 @@ fun HomeGlyph(icon: HomeIcon, modifier: Modifier = Modifier, color: Color = Mate
 @Composable
 fun TaskProgressCard(summary: TaskDaySummary, hasLoaded: Boolean, isToday: Boolean) {
     val blue = MaterialTheme.colorScheme.primary
-    Card(colors = CardDefaults.cardColors(containerColor = blue, contentColor = Color.White),
+    val onBlue = MaterialTheme.colorScheme.onPrimary
+    Card(colors = CardDefaults.cardColors(containerColor = blue, contentColor = onBlue),
         shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth()) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -106,8 +107,8 @@ fun TaskProgressCard(summary: TaskDaySummary, hasLoaded: Boolean, isToday: Boole
                         val width = 6.dp.toPx()
                         val origin = Offset(width / 2, width / 2)
                         val area = Size(size.width - width, size.height - width)
-                        drawArc(Color.White.copy(alpha = 0.25f), 0f, 360f, false, origin, area, style = Stroke(width))
-                        drawArc(Color.White, -90f, summary.fraction * 360f, false, origin, area,
+                        drawArc(onBlue.copy(alpha = 0.25f), 0f, 360f, false, origin, area, style = Stroke(width))
+                        drawArc(onBlue, -90f, summary.fraction * 360f, false, origin, area,
                             style = Stroke(width, cap = StrokeCap.Round))
                     }
                     Text(stringResource(R.string.home_percent, summary.percent), fontWeight = FontWeight.Bold)
@@ -120,7 +121,7 @@ fun TaskProgressCard(summary: TaskDaySummary, hasLoaded: Boolean, isToday: Boole
 @Composable
 fun CategoryCard(category: TaskCategory, remaining: Int, hasLoaded: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val study = category == TaskCategory.STUDY
-    val tint = if (study) MaterialTheme.colorScheme.primary else Color(0xFF986230)
+    val tint = if (study) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
     Card(onClick = onClick, modifier = modifier.testTag(if (study) "category_study" else "category_life"),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -157,7 +158,7 @@ fun TaskRow(task: TodoTask, busyTaskId: Long?, onToggle: (Long) -> Unit, onOpen:
                     color = if (task.done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(stringResource(task.category.labelResource()),
-                        color = if (task.category == TaskCategory.LIFE) Color(0xFF986230) else MaterialTheme.colorScheme.primary,
+                        color = if (task.category == TaskCategory.LIFE) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.07f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 5.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall)
                     Text(scheduleText ?: task.time ?: stringResource(R.string.task_no_time), style = MaterialTheme.typography.labelSmall,

@@ -13,6 +13,7 @@ sealed class AppDestination(val route: String) {
         fun location(filter: TaskFilter): String = "task_list?category=${filter.name}"
     }
     data object Profile : AppDestination("profile")
+    data object Appearance : AppDestination("appearance")
     data object Notifications : AppDestination("notifications")
     data object TaskCreate : AppDestination("task_create?category={category}&date={date}") {
         const val CATEGORY_ARGUMENT = "category"
@@ -26,6 +27,6 @@ sealed class AppDestination(val route: String) {
 
     companion object {
         fun requiresSession(route: String?): Boolean =
-            route == Home.route || route == TaskList.route || route == Profile.route || route == TaskDetail.route || route == TaskCreate.route || route == Notifications.route
+            route == Home.route || route == TaskList.route || route == Profile.route || route == TaskDetail.route || route == TaskCreate.route || route == Notifications.route || route == Appearance.route
     }
 }

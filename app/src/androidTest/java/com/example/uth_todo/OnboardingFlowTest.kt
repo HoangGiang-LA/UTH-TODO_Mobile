@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.SideEffect
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
@@ -37,6 +41,9 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.espresso.Espresso.pressBack
 import com.example.uth_todo.data.preferences.OnboardingPreferences
+import com.example.uth_todo.data.preferences.AppearancePreferences
+import com.example.uth_todo.model.ThemeMode
+import com.example.uth_todo.ui.settings.AppearanceViewModel
 import com.example.uth_todo.data.auth.AuthRepository
 import com.example.uth_todo.data.tasks.TaskDates
 import com.example.uth_todo.data.tasks.TaskRepository
@@ -67,13 +74,16 @@ class OnboardingFlowTest {
     @get:Rule val compose = createComposeRule()
     private val models = ViewModelStore()
     private lateinit var navController: NavHostController
+    @Volatile private var appliedDarkColors = false
 
     @After fun clearViewModels() { compose.runOnIdle { models.clear() } }
 
     private fun launchFlow(completed: Boolean = false, initialSession: AuthSession = AuthSession.SignedOut,
         configured: Boolean = false, taskRepository: TaskRepository? = null, authRepository: AuthRepository? = null,
         reminders: com.example.uth_todo.notifications.TaskReminderController? = null,
-        reminderRequests: MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>? = null) {
+        reminderRequests: MutableStateFlow<com.example.uth_todo.notifications.ReminderOpenRequest?>? = null,
+        appearancePreferences: AppearancePreferences? = null,
+        systemDark: androidx.compose.runtime.State<Boolean>? = null) {
         compose.setContent {
             navController = rememberNavController()
             val model = androidx.compose.runtime.remember {
@@ -86,8 +96,18 @@ class OnboardingFlowTest {
                 taskRepository?.let { HomeViewModel(it, reminders = reminders).also { viewModel -> models.put("home", viewModel) } }
             }
             val reminderRequest = reminderRequests?.collectAsState()?.value
-            UTHTODOTheme { UthTodoApp(model, auth, navController, homeViewModel = home, reminderController = reminders,
-                reminderOpenRequest = reminderRequest, onReminderRequestHandled = { reminderRequests?.value = null }) }
+            val appearance = androidx.compose.runtime.remember(appearancePreferences) {
+                appearancePreferences?.let { AppearanceViewModel(it).also { vm -> models.put("appearance", vm) } }
+            }
+            val appearanceState = appearance?.uiState?.collectAsState()?.value
+            UTHTODOTheme(mode = appearanceState?.mode ?: ThemeMode.SYSTEM,
+                systemDark = systemDark?.value ?: isSystemInDarkTheme()) {
+                val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+                SideEffect { appliedDarkColors = dark }
+                UthTodoApp(model, auth, navController, homeViewModel = home, reminderController = reminders,
+                    reminderOpenRequest = reminderRequest, onReminderRequestHandled = { reminderRequests?.value = null },
+                    appearanceViewModel = appearance)
+            }
         }
         compose.waitUntil(6_000) {
             navController.currentDestination?.route ==
@@ -99,6 +119,97 @@ class OnboardingFlowTest {
         if (taskRepository != null) compose.waitUntil(6_000) {
             (models["home"] as? HomeViewModel)?.uiState?.value?.hasLoaded == true
         }
+    }
+
+    @Test fun appearanceChangesWholeAppAndBackKeepsNavigation() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository(),
+            appearancePreferences = AppearancePreferences(MemoryPreferences()), systemDark = androidx.compose.runtime.mutableStateOf(false))
+        compose.onNodeWithTag("open_profile").performClick()
+        compose.onNodeWithTag("profile_appearance").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance_mode_DARK").performScrollTo().performClick()
+        compose.waitUntil(5_000) { appliedDarkColors }
+        compose.onNodeWithTag("appearance_mode_DARK").assertIsSelected()
+        compose.onNodeWithTag("appearance_back").performScrollTo().performClick()
+        compose.onNodeWithTag("profile_title").assertIsDisplayed()
+        pressBack()
+        compose.onNodeWithTag("home_title").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(true, appliedDarkColors) }
+    }
+
+    @Test fun systemThemeTracksDeviceAndExplicitLightOverridesIt() {
+        val systemDark = androidx.compose.runtime.mutableStateOf(false)
+        launchFlow(completed = true, initialSession = AuthSession.Guest, appearancePreferences = AppearancePreferences(MemoryPreferences()),
+            systemDark = systemDark)
+        compose.runOnIdle { assertEquals(false, appliedDarkColors); systemDark.value = true }
+        compose.waitUntil(5_000) { appliedDarkColors }
+        compose.onNodeWithTag("open_profile").performClick()
+        compose.onNodeWithTag("profile_appearance").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance_mode_LIGHT").performScrollTo().performClick()
+        compose.waitUntil(5_000) { !appliedDarkColors }
+        compose.onNodeWithTag("appearance_mode_LIGHT").assertIsSelected()
+        compose.runOnIdle { systemDark.value = false }
+        compose.waitForIdle()
+        compose.runOnIdle { systemDark.value = true }
+        compose.waitForIdle()
+        compose.runOnIdle { assertEquals(false, appliedDarkColors) }
+    }
+
+    @Test fun appearanceRoundTripPreservesListSearchAndCategory() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository(),
+            appearancePreferences = AppearancePreferences(MemoryPreferences()))
+        compose.onNodeWithTag("category_study").performScrollTo().performClick()
+        compose.onNodeWithTag("tasks_search").performTextInput("on chuong")
+        compose.onNodeWithTag("tasks_search").performImeAction()
+        compose.onNodeWithTag("task_tab_profile").performClick()
+        compose.onNodeWithTag("profile_appearance").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance_mode_DARK").performScrollTo().performClick()
+        compose.waitUntil(5_000) { appliedDarkColors }
+        pressBack()
+        pressBack()
+        compose.onNodeWithTag("tasks_search").assertTextContains("on chuong")
+        compose.onNodeWithTag("task_filter_STUDY").assertIsSelected()
+    }
+
+    @Test fun changingThemeDoesNotRecreateTaskDraftOrRoute() {
+        launchFlow(completed = true, initialSession = AuthSession.Guest, taskRepository = UiTaskRepository(),
+            appearancePreferences = AppearancePreferences(MemoryPreferences()), systemDark = androidx.compose.runtime.mutableStateOf(false))
+        compose.onNodeWithTag("task_add_action").performClick()
+        compose.onNodeWithTag("task_create_title").performScrollTo().performTextInput("Lau nha")
+        compose.runOnIdle { (models["appearance"] as AppearanceViewModel).select(ThemeMode.DARK) }
+        compose.waitUntil(5_000) { appliedDarkColors }
+        compose.onNodeWithTag("task_create_title").assertTextContains("Lau nha")
+        compose.runOnIdle { assertEquals(AppDestination.TaskCreate.route, navController.currentDestination?.route) }
+    }
+
+    @Test fun losingSessionClosesAppearanceButKeepsChosenTheme() {
+        val auth = UiAuthRepository(AuthSession.Guest, true)
+        launchFlow(completed = true, initialSession = AuthSession.Guest, authRepository = auth,
+            appearancePreferences = AppearancePreferences(MemoryPreferences()))
+        compose.onNodeWithTag("open_profile").performClick()
+        compose.onNodeWithTag("profile_appearance").performScrollTo().performClick()
+        compose.onNodeWithTag("appearance_mode_DARK").performScrollTo().performClick()
+        compose.waitUntil(5_000) { appliedDarkColors }
+        compose.runOnIdle { auth.session.value = AuthSession.SignedOut }
+        compose.onNodeWithTag("welcome_title").assertIsDisplayed()
+        compose.runOnIdle { assertEquals(true, appliedDarkColors); assertNull(navController.previousBackStackEntry) }
+    }
+
+    @Test fun appearanceChoicesRemainReachableAtLargeFont() {
+        var selected: ThemeMode? = null
+        compose.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale = 2f)) {
+                UTHTODOTheme(mode = ThemeMode.DARK) {
+                    Box(Modifier.requiredSize(320.dp, 480.dp)) {
+                        com.example.uth_todo.ui.settings.AppearanceScreen(
+                            com.example.uth_todo.ui.settings.AppearanceUiState(isLoading = false),
+                            onBack = {}, onMode = { selected = it }, onRetry = {})
+                    }
+                }
+            }
+        }
+        compose.onNodeWithTag("appearance_mode_DARK").performScrollTo().assertIsDisplayed().performClick()
+        compose.runOnIdle { assertEquals(ThemeMode.DARK, selected) }
     }
 
     @Test fun nextSwipeAndBackFollowTheThreePages() {

@@ -12,16 +12,18 @@
 | Chi tiết | Commit `b27f9d3`, người dùng xác nhận đã test/push |
 | Tạo mới/API | Commit nguồn `f099f0c`; người dùng phát hiện tạo “Lau nha” nhận công việc khác, chưa nghiệm thu lưu qua API |
 | Lưu công việc trên thiết bị | Commit `59457c8`; CRUD lưu bền, tách dữ liệu mẫu và sửa lỗi ghi đồng thời Windows |
-| Thông báo nhắc giờ | Màn hình Thông báo, lịch nhắc/hủy/khôi phục và mở đúng task; đã triển khai, chờ kiểm tra quyền/chuông trên thiết bị |
+| Thông báo nhắc giờ | Commit `c8eece6`; đã triển khai, quyền/chuông/khôi phục cần kiểm tra trên thiết bị |
+| Cài đặt giao diện | Theo hệ thống/Sáng/Tối, lưu lựa chọn và áp dụng toàn app; chờ nghiệm thu bản build mới |
+
+Hướng dẫn chốt bản, kiểm thử tổng thể và lấy APK: [PROJECT-HANDOFF.md](docs/PROJECT-HANDOFF.md). Chi tiết cài đặt giao diện: [APPEARANCE-REPORT.md](docs/APPEARANCE-REPORT.md).
 
 Xem [báo cáo nhắc công việc](docs/TASK-REMINDERS-REPORT.md), [báo cáo lưu công việc](docs/TASK-PERSISTENCE-REPORT.md), [lộ trình nhánh](docs/BRANCH-ROADMAP.md), báo cáo [Tạo mới](docs/TASK-CREATE-REPORT.md), [Chi tiết](docs/TASK-DETAIL-REPORT.md), [Danh sách](docs/TASK-LIST-REPORT.md), [BTVN 04](docs/BTVN04-REPORT.md), [01](docs/BTVN01-REPORT.md), [02](docs/BTVN02-REPORT.md), [03](docs/BTVN03-REPORT.md).
 
 ## Chạy bản hiện tại
 
-Base `59457c8`. Mã nhắc giờ hiện ở working tree trên `feature/task-create-api`; người dùng tự tạo nhánh `feature/task-reminders` trước khi chốt. Agent chưa stage/commit/push/chuyển nhánh.
+Base `c8eece6`. Thay đổi giao diện và tài liệu bàn giao đang ở working tree trên `feature/task-reminders`; nhánh gợi ý để người dùng chốt là `feature/appearance-finalization`. Agent chưa stage/commit/push/chuyển nhánh.
 
 ```powershell
-git switch -c feature/task-reminders
 .\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ```
 
@@ -64,6 +66,10 @@ Nhắc giờ dùng AlarmManager và dữ liệu đã lưu trên thiết bị. Kh
 
 Registry lưu scope/ID/thời điểm và dấu đã gửi, không ghi nội dung task vào alarm Intent. Receiver đọc lại task đã lưu trước khi hiển thị, gửi một lần cho mỗi hạn chót. Khôi phục lịch khi reboot, cập nhật app, đổi giờ/múi giờ hoặc cấp quyền nhắc đúng giờ; mở app/quay lại màn hình quyền cũng cập nhật lịch. Force-stop/tắt quyền và chính sách pin có thể ảnh hưởng giao nhận; chưa nghiệm thu các tình huống OS trong môi trường agent.
 
+## Cài đặt giao diện
+
+Hồ sơ → Giao diện → **Theo hệ thống / Sáng / Tối**. Mặc định theo thiết bị. Lựa chọn lưu riêng trên máy và áp dụng cho toàn bộ app, kể cả đăng nhập/Khách. Đổi giao diện không đổi nguồn dữ liệu, bộ lọc hoặc bản nháp. Lỗi ghi giữ lựa chọn trước và cho chọn lại; lỗi đọc có thể thử lại. Thanh hệ thống, thẻ tiến độ, nhóm công việc và các thẻ minh họa cũng đổi màu phù hợp.
+
 ## API bài tập
 
 Token mock nằm trong file bị Git bỏ qua `api.local.properties`. Máy khác sao chép template `api.local.properties.example`, điền `MOCK_API_TOKEN`, Sync/build; biến `UTH_MOCK_API_TOKEN` được ưu tiên. Token mock độc lập với Firebase ID token/service account và được biên dịch vào APK.
@@ -88,10 +94,10 @@ Không đổi Firebase rules hoặc tạo kho task RTDB trong mốc này. Chưa 
 
 | Kiểm tra trong môi trường agent | Kết quả |
 |---|---|
-| Kotlin 2.2.10/JUnit chạy riêng với thư viện thực có sẵn | 137/137 đạt: 114 hồi quy + 22 planner/engine/session + 1 tương thích task nhắc cũ |
+| Kotlin 2.2.10/JUnit chạy riêng với thư viện thực có sẵn | 148/148 đạt: 137 cũ + 11 cài đặt giao diện |
 | File DataStore thật | Đạt tạo/đóng/mở lại, nhiều lần sửa/xóa, 20 tạo đồng thời và task nhắc cũ chưa đủ ngày/giờ |
-| Biên dịch 71 source Kotlin/Compose với header R/BuildConfig kiểm tra nguồn | Đạt; chưa phải APK/Gradle |
-| Mã Android test | 45 test biên dịch đạt, gồm 9 test Thông báo/Back/quyền/mở task mới; chưa chạy trên thiết bị |
+| Biên dịch 75 source Kotlin/Compose với compile classpath từ Gradle lint model và header R/BuildConfig kiểm tra nguồn | Đạt; chưa phải APK/Gradle |
+| Mã Android test | 52 test biên dịch đạt với compile classpath của Android test, gồm 6 test giao diện mới; chưa chạy trên thiết bị |
 | AAPT2 compile resources và git diff --check | Đạt |
 | assembleDebug/testDebugUnitTest/lintDebug qua wrapper | Bị chặn quyền mở file khóa wrapper, chưa chạy task |
 | UI thật/quyền AlarmManager/chuông/reboot/connectedDebugAndroidTest/live API | Chưa chạy trong môi trường agent |
@@ -109,12 +115,12 @@ Còn cảnh báo deprecation createComposeRule có sẵn. Kết quả test ngu�
 | `MainActivity`, `navigation/` | Khởi tạo repository, bind phiên, điều hướng và đổi nguồn |
 | `model/` | Session, task/draft/validation, lựa chọn dữ liệu |
 | `data/tasks/` | DataStore, factory một instance/file, phân vùng phiên, repository API, tìm kiếm/ngày/thống kê |
-| `data/auth/`, `data/preferences/` | Firebase Auth/Credentials và onboarding |
+| `data/auth/`, `data/preferences/` | Firebase Auth/Credentials, onboarding và lựa chọn giao diện |
 | `data/firebase/`, `notifications/` | Hồ sơ/telemetry, FCM, planner/engine, AlarmManager/receivers và registry nhắc |
 | `ui/home/` | State dùng chung task, điều phối đọc/ghi và đổi nguồn |
 | `ui/tasklist/`, `ui/taskdetail/`, `ui/taskcreate/` | Các flow công việc |
 | `ui/notifications/` | Màn hình Thông báo và yêu cầu quyền Android theo thao tác người dùng |
 | `ui/profile/`, `ui/components/` | Hồ sơ, chọn dữ liệu, thông báo quyền, form và thành phần chung |
-| `ui/onboarding/`, `ui/splash/`, `ui/welcome/`, `ui/auth/`, `ui/theme/` | Khởi động/đăng nhập/theme |
+| `ui/onboarding/`, `ui/splash/`, `ui/welcome/`, `ui/auth/`, `ui/theme/`, `ui/settings/` | Khởi động/đăng nhập/palette và cài đặt giao diện |
 
 Giữ SDK 37/minSdk 24, AGP 9.4.1, Gradle 9.6.0, Kotlin 2.2.10, Java source/target 11, Firebase BoM và cấu hình máy. Không thêm dependency. Không stage token/config Firebase/local.properties/cấu hình IDE/công cụ/cache.
